@@ -7,14 +7,14 @@ light bar. The `ha_slate` custom integration makes the panel a first-class Home 
 a native Assist satellite (HA's wake word picker, announcements, conversations, timers) plus lights,
 volume, mute, dashboard URL and more. Updates are A/B with RAUC.
 
-**Read first: [`docs/SPEC.md`](docs/SPEC.md)**. It covers architecture, layer structure, kernel
+**Read first: [`docs/spec.md`](docs/spec.md)**. It covers architecture, layer structure, kernel
 configuration, the voice and lighting design, partitioning and updates, and the build guide.
 
 ## Repository layout
 
 | Path | What |
 |---|---|
-| `docs/SPEC.md` | Technical specification and build guide |
+| `docs/spec.md` | Technical specification and build guide |
 | `kas/` | Build configurations: `machine/qemuarm64.yml` (dev/CI), `machine/cm4.yml`, `machine/cm5.yml` (CM5 + 10.1" Touch Display 2) |
 | `meta-ha-slate/` | Product Yocto layer: distro, images, services, kernel fragments, A/B boot |
 | `custom_components/ha_slate/` | Home Assistant integration (HACS-installable; HA ≥ 2026.10) |
@@ -37,4 +37,9 @@ Then install the integration (HACS custom repository, or copy `custom_components
 panel is discovered automatically. Custom wake words: put `<id>.json` + `<id>.tflite` in HA's
 `config/custom_wake_words/` folder (SPEC §8.6).
 
-Host requirements, flashing, and test instructions are in `docs/SPEC.md` §13.
+Host requirements, flashing, and test instructions are in `docs/spec.md` §13.
+
+## Documentation
+
+The documentation index is [`docs/README.md`](docs/README.md); everything else is in
+[`docs/spec.md`](docs/spec.md).

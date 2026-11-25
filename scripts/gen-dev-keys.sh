@@ -2,7 +2,7 @@
 # Create a throw-away RAUC signing CA for development builds in keys/dev/.
 # keys/ is gitignored. Production keys live in an HSM / CI secret store and
 # are passed to the build via SLATE_KEYS_DIR (cert) and RAUC_KEY_FILE (key or
-# PKCS#11 URI); see docs/SPEC.md "Updates & signing".
+# PKCS#11 URI); see docs/spec.md "Updates & signing".
 set -eu
 dir="$(cd "$(dirname "$0")/.." && pwd)/keys/dev"
 mkdir -p "$dir"

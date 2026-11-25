@@ -6,7 +6,7 @@
 # kas/machine/cm5.yml selects this one with PREFERRED_VERSION_u-boot.
 #
 # Production may replace U-Boot on CM5 with the Raspberry Pi bootloader's
-# native "tryboot" A/B (docs/SPEC.md, roadmap R14).
+# native "tryboot" A/B (docs/spec.md, roadmap R14).
 
 require recipes-bsp/u-boot/u-boot-common.inc
 require recipes-bsp/u-boot/u-boot.inc
