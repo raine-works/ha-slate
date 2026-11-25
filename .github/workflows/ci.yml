@@ -66,5 +66,5 @@ jobs:
       # Validates kas schema and that every pinned layer commit is fetchable.
       - run: pip install kas==5.5 && kas dump kas/machine/cm4.yml > /dev/null
 
-# Full image builds need a large self-hosted runner (see docs/SPEC.md §13.1):
+# Full image builds need a large self-hosted runner (see docs/spec.md §13.1):
 #   scripts/gen-dev-keys.sh && kas build kas/machine/qemuarm64.yml
