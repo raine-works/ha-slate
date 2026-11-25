@@ -2,29 +2,38 @@ name: ci
 
 on:
   push:
+    branches: [master]
   pull_request:
+  workflow_dispatch:
 
+permissions:
+  contents: read
+
+# Test dependencies are compiled (uv pip compile) into requirements-test.txt from requirements-test.in, one set per
+# job; the header of each says how to regenerate it.
 jobs:
   lightd:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.12"   # matches Scarthgap's target CPython
-      - run: pip install pytest
+          python-version: "3.12.16"   # Scarthgap's target CPython is 3.12
+      - run: pip install -r requirements-test.txt
+        working-directory: apps/slate-lightd
       - run: pytest -q
         working-directory: apps/slate-lightd
 
   agent:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.12"
-      - run: sudo apt-get install -y espeak-ng   # enables the real wake word detection test
-      - run: pip install -r requirements-target.txt pytest pytest-asyncio
+          python-version: "3.12.16"
+      # espeak-ng enables the real wake word detection test.
+      - run: sudo apt-get update && sudo apt-get install -y espeak-ng
+      - run: pip install -r requirements-test.txt
         working-directory: apps/slate-agent
       - run: pytest -q
         working-directory: apps/slate-agent
@@ -32,21 +41,22 @@ jobs:
   integration:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.14"   # Home Assistant's current requirement
-      - run: sudo apt-get install -y ffmpeg
-      - run: >
-          pip install pytest-homeassistant-custom-component "websockets==12.0"
-          hassil home-assistant-intents ha-ffmpeg mutagen pymicro-vad pyspeex-noise gazetteer-matcher
+          python-version: "3.14.10"   # Home Assistant 2026.10 needs >= 3.14.2
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -r requirements-test.txt
       - run: pytest -q tests/ha_slate
 
   lint:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt-get install -y shellcheck
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12.16"
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
       - run: >
           shellcheck -s sh
           meta-ha-slate/recipes-kiosk/slate-kiosk/files/slate-kiosk-launch
@@ -56,5 +66,5 @@ jobs:
       # Validates kas schema and that every pinned layer commit is fetchable.
       - run: pip install kas==5.5 && kas dump kas/machine/cm4.yml > /dev/null
 
-# Full image builds need a large self-hosted runner (see docs/SPEC.md §13.1):
+# Full image builds need a large self-hosted runner (see docs/spec.md §13.1):
 #   scripts/gen-dev-keys.sh && kas build kas/machine/qemuarm64.yml

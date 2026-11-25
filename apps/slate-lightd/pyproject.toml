@@ -19,3 +19,5 @@ include = ["slate_lightd", "slate_lightd.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `pytest` (unlike `python -m pytest`) doesn't put the app on sys.path, and tests/ isn't a package.
+pythonpath = ["."]

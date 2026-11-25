@@ -23,7 +23,7 @@ jobs:
     secrets: inherit
     with:
       focus: |
-        - the panel's security posture (docs/SPEC.md §1.2 N4-N5, §12): read-only root, writes only under /data, nothing listening but the agent's TLS port and mDNS, no SSH outside slate-image-dev, confined unprivileged services; pairing, TLS pinning and token checks in the agent and the integration
+        - the panel's security posture (docs/spec.md §1.2 N4-N5, §12): read-only root, writes only under /data, nothing listening but the agent's TLS port and mDNS, no SSH outside slate-image-dev, confined unprivileged services; pairing, TLS pinning and token checks in the agent and the integration
         - Slate Link protocol changes that are incompatible without a PROTOCOL_VERSION bump, on either side
         - Home Assistant rules in custom_components/ha_slate: no blocking I/O in the event loop, manifest version bumped for a release
         - the agent and lightd staying on Python 3.12 (Scarthgap's CPython); board-specific choices kept in kas/machine and meta-ha-slate/dynamic-layers

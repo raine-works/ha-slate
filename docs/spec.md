@@ -863,17 +863,16 @@ integration refuses to talk to a panel with a different version, and HA shows it
 
 ```sh
 # Agent (real TFLite engines; espeak-ng enables the synthetic-speech detection test)
-cd apps/slate-agent && python3.12 -m venv .venv && .venv/bin/pip install -r requirements-target.txt pytest pytest-asyncio
+cd apps/slate-agent && python3.12 -m venv .venv && .venv/bin/pip install -r requirements-test.txt
 .venv/bin/pytest -q
 .venv/bin/python -m slate_agent --state-dir /tmp/agent --no-audio --no-zeroconf --debug   # pair from a dev HA
 
 # lightd
-cd apps/slate-lightd && python3 -m venv .venv && .venv/bin/pip install pytest && .venv/bin/pytest -q
+cd apps/slate-lightd && python3.12 -m venv .venv && .venv/bin/pip install -r requirements-test.txt && .venv/bin/pytest -q
 .venv/bin/python -m slate_lightd --backend console -c lightd.toml.example   # bar preview in your terminal
 
 # HA integration (Python 3.14; runs the real agent in-process over TLS)
-uv venv -p 3.14 .ha && uv pip install -p .ha/bin/python pytest-homeassistant-custom-component "websockets==12.0" \
-    hassil home-assistant-intents ha-ffmpeg mutagen pymicro-vad pyspeex-noise gazetteer-matcher
+uv venv -p 3.14.10 .ha && uv pip install -p .ha/bin/python -r requirements-test.txt
 .ha/bin/python -m pytest -q tests/ha_slate
 ```
 
