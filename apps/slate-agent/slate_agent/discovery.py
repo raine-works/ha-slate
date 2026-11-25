@@ -11,13 +11,20 @@ _LOG = logging.getLogger(__name__)
 
 
 class Advertiser:
+    """The agent's mDNS service record: ID, name, version, protocol and paired flag in its TXT."""
+
     def __init__(self, name: str, device_id: str, port: int, version: str, paired: bool) -> None:
+        """Describe the service; nothing is advertised until ``start``."""
         self.name, self.device_id, self.port = name, device_id, port
         self.version, self.paired = version, paired
         self._zc = None
         self._info = None
 
     async def start(self) -> None:
+        """Register the service on every non-loopback, non-link-local IPv4 address.
+
+        Zeroconf errors (e.g. a name conflict) propagate to the caller.
+        """
         import ifaddr
         from zeroconf import ServiceInfo
         from zeroconf.asyncio import AsyncZeroconf
@@ -43,6 +50,7 @@ class Advertiser:
         _LOG.info("advertising %s on port %d", self._info.name, self.port)
 
     async def stop(self) -> None:
+        """Unregister the service and close zeroconf; a no-op if never started."""
         if self._zc and self._info:
             await self._zc.async_unregister_service(self._info)
             await self._zc.async_close()

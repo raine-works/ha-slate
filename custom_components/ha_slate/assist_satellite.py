@@ -39,6 +39,7 @@ from .client import SlateError
 from .const import (
     AUDIO_CHUNK_BYTES, CH_MIC, CH_SPK, DOMAIN, EVENT_WAKE_WORD_DETECTED, TTS_SAMPLE_RATE, TTS_TIMEOUT_EXTRA,
 )
+from .device import SlateDevice
 from .entity import SlateEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,16 +56,25 @@ _FORWARD = {
 
 async def async_setup_entry(hass: HomeAssistant, entry: SlateConfigEntry,
                             async_add_entities: AddConfigEntryEntitiesCallback) -> None:
+    """Add the panel's Assist satellite entity."""
     async_add_entities([SlateAssistSatellite(entry.runtime_data)])
 
 
 class SlateAssistSatellite(SlateEntity, AssistSatelliteEntity):
+    """The panel as an Assist satellite: runs its voice turns, announcements and timers.
+
+    ``SlateDevice`` routes the panel's pipeline messages and microphone audio here
+    (``async_handle_message`` / ``async_handle_binary``); the entity streams TTS
+    and announcement audio back as raw PCM (see the module docstring).
+    """
+
     entity_description = AssistSatelliteEntityDescription(key="assist_satellite")
     _attr_translation_key = "assist_satellite"
     _attr_name = None
     _attr_supported_features = AssistSatelliteEntityFeature.ANNOUNCE | AssistSatelliteEntityFeature.START_CONVERSATION
 
-    def __init__(self, device) -> None:
+    def __init__(self, device: SlateDevice) -> None:
+        """Create the satellite for ``device``; it registers itself as ``device.satellite`` once added."""
         SlateEntity.__init__(self, device, "assist_satellite")
         AssistSatelliteEntity.__init__(self)
         self._audio_queue: asyncio.Queue[bytes | None] | None = None
@@ -81,14 +91,17 @@ class SlateAssistSatellite(SlateEntity, AssistSatelliteEntity):
 
     @property
     def pipeline_entity_id(self) -> str | None:
+        """Entity ID of this panel's pipeline select, or None if it isn't registered."""
         return self._select_entity("pipeline")
 
     @property
     def vad_sensitivity_entity_id(self) -> str | None:
+        """Entity ID of this panel's VAD sensitivity select, or None if it isn't registered."""
         return self._select_entity("vad_sensitivity")
 
     @property
     def tts_options(self) -> dict[str, Any] | None:
+        """Ask TTS for mono 16-bit WAV at the panel's rate, so it can be streamed without conversion."""
         # Plain keys: stable across HA releases (2026.12 wraps them in an enum).
         return {
             "preferred_format": "wav",
@@ -98,6 +111,7 @@ class SlateAssistSatellite(SlateEntity, AssistSatelliteEntity):
         }
 
     async def async_added_to_hass(self) -> None:
+        """Register with the device and as the timer handler for its HA device."""
         await super().async_added_to_hass()
         self.device.satellite = self
         assert self.registry_entry is not None and self.registry_entry.device_id is not None
@@ -105,6 +119,7 @@ class SlateAssistSatellite(SlateEntity, AssistSatelliteEntity):
             self.hass, self.registry_entry.device_id, self._handle_timer))
 
     async def async_will_remove_from_hass(self) -> None:
+        """Unregister from the device and end any pipeline's audio stream."""
         self.device.satellite = None
         self._end_audio()
         await super().async_will_remove_from_hass()
@@ -112,6 +127,7 @@ class SlateAssistSatellite(SlateEntity, AssistSatelliteEntity):
     # -- configuration: the wake word picker in HA's voice settings ------------
     @callback
     def async_get_configuration(self) -> AssistSatelliteConfiguration:
+        """The wake words the panel has, which are active and how many may be, from its last state."""
         state = self.device.state
         return AssistSatelliteConfiguration(
             available_wake_words=[
@@ -124,15 +140,18 @@ class SlateAssistSatellite(SlateEntity, AssistSatelliteEntity):
         )
 
     async def async_set_configuration(self, config: AssistSatelliteConfiguration) -> None:
+        """Set the panel's active wake words; raises ``SlateError`` if it refuses them or isn't connected."""
         await self.device.async_set_settings(active_wake_words=list(config.active_wake_words))
 
     @callback
     def async_device_state_changed(self) -> None:
+        """Called by the device when the panel pushes new state."""
         self.async_write_ha_state()
 
     # -- panel -> HA -----------------------------------------------------------
     @callback
     def async_handle_message(self, msg: dict[str, Any]) -> None:
+        """Handle a voice message from the panel; unknown types are ignored."""
         typ = msg.get("type")
         if typ == "run-pipeline":
             self._start_pipeline(msg)
@@ -152,11 +171,13 @@ class SlateAssistSatellite(SlateEntity, AssistSatelliteEntity):
 
     @callback
     def async_handle_binary(self, channel: int, payload: bytes) -> None:
+        """Feed microphone audio to the running pipeline; other channels, or audio with none running, are dropped."""
         if channel == CH_MIC and self._audio_queue is not None:
             self._audio_queue.put_nowait(payload)
 
     @callback
     def async_device_disconnected(self) -> None:
+        """End the running turn and any wait for playback, so the entity doesn't stay busy."""
         self._end_audio()
         self._played.set()
         if self.state != "idle":
@@ -211,6 +232,7 @@ class SlateAssistSatellite(SlateEntity, AssistSatelliteEntity):
         self.device.entry.async_create_background_task(self.hass, _go(), f"{self.entity_id} send")
 
     def on_pipeline_event(self, event: PipelineEvent) -> None:
+        """Track the turn (TTS token, follow-up question), start TTS streaming, and forward the event to the panel."""
         data = event.data or {}
         out: dict[str, Any] = {}
         if event.type is PipelineEventType.RUN_START:
@@ -272,9 +294,11 @@ class SlateAssistSatellite(SlateEntity, AssistSatelliteEntity):
 
     # -- announcements / start conversation ------------------------------------
     async def async_announce(self, announcement: AssistSatelliteAnnouncement) -> None:
+        """Play the announcement and wait for the panel to confirm it (or a timeout); raises ``SlateError`` if disconnected."""
         await self._play_media("announce", announcement)
 
     async def async_start_conversation(self, start_announcement: AssistSatelliteAnnouncement) -> None:
+        """Play the announcement, then open the panel's microphone without a wake word."""
         await self._play_media("announce", start_announcement)
         await self.device.async_command("start-listening", conversation=True)
 

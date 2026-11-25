@@ -41,6 +41,8 @@ HA_WAKE_RETRY_S = 5.0       # back-off after a failed HA-side wake word run
 
 
 class VoiceState(enum.StrEnum):
+    """Where the panel is in a voice turn (see the module docstring); its value is reported to HA."""
+
     IDLE = "idle"
     STREAMING = "streaming"
     WAITING = "waiting"
@@ -49,6 +51,8 @@ class VoiceState(enum.StrEnum):
 
 @dataclass
 class Upload:
+    """A custom wake word model being received in binary frames, with what HA announced for it."""
+
     id: str
     sha256: str
     size: int
@@ -59,26 +63,43 @@ class Upload:
 
 @dataclass
 class AgentPaths:
+    """Where the agent keeps state (settings, under ``/data``) and the files it hands to privileged units.
+
+    Without ``kiosk_env`` the kiosk URL isn't applied; without ``runtime_dir``
+    reboot and reload-kiosk are refused.
+    """
+
     state_dir: Path
     kiosk_env: Path | None = None        # written when HA changes the kiosk URL
     runtime_dir: Path | None = None      # trigger files for privileged actions
 
 
 class Session:
+    """One authenticated Home Assistant connection; sends are serialised so frames never interleave."""
+
     def __init__(self, ws: Any) -> None:
+        """Wrap ``ws``, a websockets server connection."""
         self.ws = ws
         self._lock = asyncio.Lock()
 
     async def send(self, msg: dict[str, Any]) -> None:
+        """Send a JSON message; raises the websockets library's error if the connection is closed."""
         async with self._lock:
             await self.ws.send(encode(msg))
 
     async def send_bin(self, channel: int, payload: bytes) -> None:
+        """Send a binary frame on ``channel``; raises like ``send``."""
         async with self._lock:
             await self.ws.send(frame(channel, payload))
 
 
 class Agent:
+    """The panel's agent: serves Home Assistant's Slate Link session and runs the voice loop.
+
+    Audio, lights, wake word models and pairing come in as collaborators, so
+    tests can swap each for a fake.
+    """
+
     def __init__(
         self,
         *,
@@ -93,6 +114,12 @@ class Agent:
         engine_factory: Callable[[list, str], WakeWordEngine] = WakeWordEngine,
         model: str = "HA Slate",
     ) -> None:
+        """Set up the agent and load its saved settings; nothing runs until ``start``.
+
+        ``source_factory`` makes a fresh microphone source each time capture
+        (re)starts; ``engine_factory`` builds the wake word engine from the
+        active models and sensitivity.
+        """
         self.paths = paths
         self.device_id = device_id
         self.name = name
@@ -123,6 +150,10 @@ class Agent:
 
     # ------------------------------------------------------------------ lifecycle
     async def start(self) -> None:
+        """Load the wake word engine and start the capture, playback and watchdog tasks.
+
+        Raises what the engine factory raises (e.g. a model that won't load).
+        """
         await self.reload_engine()
         if not self.settings.muted:
             self._unmuted.set()
@@ -133,6 +164,7 @@ class Agent:
                        asyncio.create_task(self._watchdog_loop(), name="watchdog")]
 
     async def stop(self) -> None:
+        """Cancel the background tasks and stop capture and playback."""
         for t in self._tasks:
             t.cancel()
         for t in self._tasks:
@@ -144,6 +176,11 @@ class Agent:
         self._executor.shutdown(wait=False, cancel_futures=True)
 
     async def reload_engine(self) -> None:
+        """Rebuild the wake word engine from the active wake words and sensitivity.
+
+        Active IDs that aren't installed are logged and skipped, and at most
+        ``MAX_ACTIVE`` are used. Built off the event loop, on the detection thread.
+        """
         models = self.store.models()
         active = [models[i] for i in self.settings.active_wake_words if i in models][:MAX_ACTIVE]
         missing = [i for i in self.settings.active_wake_words if i not in models]
@@ -156,7 +193,12 @@ class Agent:
 
     # ------------------------------------------------------------------ connection
     async def handle_connection(self, ws: Any, path: str | None = None) -> None:
-        """websockets handler (compatible with the legacy and new APIs)."""
+        """websockets handler (compatible with the legacy and new APIs).
+
+        Sends ``hello``, then expects ``auth`` (or ``pair``) within
+        ``AUTH_TIMEOUT_S``; refuses with ``auth-failed`` otherwise. An accepted
+        session replaces any previous one, and the handler returns when it closes.
+        """
         session = Session(ws)
         nonce = secrets.token_hex(16)
         await session.send({"type": "hello", "protocol": PROTOCOL_VERSION, "device_id": self.device_id,
@@ -213,6 +255,7 @@ class Agent:
         return False, {"reason": "expected_auth"}
 
     async def send_state(self) -> None:
+        """Push the full state (voice state, settings, wake words, lights) to HA; a no-op with no session."""
         if self.session is None:
             return
         models = self.store.models()

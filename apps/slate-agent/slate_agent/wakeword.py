@@ -120,12 +120,24 @@ def _check_tflite(data: bytes) -> None:
 
 
 class WakeWordStore:
+    """The wake word models available on the panel: the packages' built-ins plus custom ones in ``custom_dir``."""
+
     def __init__(self, custom_dir: Path, builtin_dirs: list[tuple[Path, str]] | None = None) -> None:
+        """Use ``custom_dir`` for installed models (created on first install).
+
+        ``builtin_dirs`` lists ``(directory, type)`` pairs to scan for built-ins;
+        by default, the model folders of pymicro-wakeword and pyopen-wakeword.
+        """
         self.custom_dir = custom_dir
         self.builtin_dirs = builtin_dirs if builtin_dirs is not None else _default_builtin_dirs()
 
     # -- listing --------------------------------------------------------------
     def models(self) -> dict[str, WakeWordModel]:
+        """Every usable model by ID; a custom model replaces a built-in with the same ID.
+
+        Unreadable models, and those ``parse_config`` refuses with ``ValueError``
+        or ``WakeWordError``, are skipped (custom ones with a warning).
+        """
         out: dict[str, WakeWordModel] = {}
         for directory, kind in self.builtin_dirs:
             for m in _scan_builtin(directory, kind):
@@ -144,6 +156,13 @@ class WakeWordStore:
 
     # -- install / remove -----------------------------------------------------
     def install(self, model_id: str, config: dict[str, Any], model: bytes, sha256: str) -> WakeWordModel:
+        """Validate and save a custom model, replacing any with the same ID; returns it.
+
+        Raises ``WakeWordError`` for an invalid ID, a model over ``MAX_MODEL_BYTES``,
+        a ``sha256`` (hex) that doesn't match, a file that isn't TFLite, or a bad
+        config (see ``parse_config``); ``OSError`` if it can't be written. The
+        config's ``model`` field is overwritten to point at the saved file.
+        """
         if not ID_RE.match(model_id):
             raise WakeWordError("invalid wake word id")
         if len(model) > MAX_MODEL_BYTES:
@@ -162,6 +181,10 @@ class WakeWordStore:
         return parsed
 
     def remove(self, model_id: str) -> bool:
+        """Delete custom model ``model_id``; returns whether any of its files existed.
+
+        Built-ins can't be removed. Raises ``WakeWordError`` for an invalid ID.
+        """
         if not ID_RE.match(model_id):
             raise WakeWordError("invalid wake word id")
         removed = False
@@ -230,6 +253,8 @@ def _atomic_write(path: Path, data: bytes) -> None:
 
 @dataclass
 class Detection:
+    """A wake word heard: the model's ID, its phrase and the probability that crossed the cutoff."""
+
     id: str
     wake_word: str
     probability: float
@@ -248,6 +273,7 @@ class TfliteRunner:
     """
 
     def __init__(self, models: list[WakeWordModel]) -> None:
+        """Load ``models``; raises ``ImportError`` if a needed wake word package isn't installed."""
         self.micro: list[tuple[str, Any]] = []
         self.oww: list[tuple[str, Any]] = []
         self.micro_features = self.oww_features = None
@@ -272,6 +298,7 @@ class TfliteRunner:
                 self.oww.append((m.id, OpenWakeWord.from_model(m.model_path)))
 
     def process(self, audio: bytes) -> list[tuple[str, float]]:
+        """Feed 16 kHz mono s16le ``audio``; returns ``(model id, probability)`` for each window it completed."""
         out: list[tuple[str, float]] = []
         if self.micro_features is not None:
             for features in self.micro_features.process_streaming(audio):
@@ -287,14 +314,22 @@ class TfliteRunner:
         return out
 
     def reset(self) -> None:
+        """Clear every model's streaming state (e.g. after a voice turn)."""
         for _, model in self.micro + self.oww:
             model.reset()
 
 
 class WakeWordEngine:
+    """Detects the active wake words in the microphone stream, at most once per ``REFRACTORY_S``."""
+
     def __init__(self, models: list[WakeWordModel], sensitivity: str = "default",
                  runner_factory: Callable[[list[WakeWordModel]], _Runner] = TfliteRunner,
                  clock: Callable[[], float] = time.monotonic) -> None:
+        """Listen for ``models`` with each cutoff adjusted by ``sensitivity`` (unknown values mean default).
+
+        ``runner_factory`` and ``clock`` are seams for tests. With no models it
+        detects nothing. Raises ``WakeWordError`` for more than ``MAX_ACTIVE`` models.
+        """
         if len(models) > MAX_ACTIVE:
             raise WakeWordError(f"at most {MAX_ACTIVE} wake words can be active")
         adjust = _SENSITIVITY.get(sensitivity, _SENSITIVITY["default"])
@@ -305,6 +340,7 @@ class WakeWordEngine:
         self._blocked_until = 0.0
 
     def process(self, audio: bytes) -> Detection | None:
+        """Feed a chunk of audio; returns the most probable detection, or None (also within the refractory period)."""
         if self.runner is None:
             return None
         best: Detection | None = None
@@ -320,5 +356,6 @@ class WakeWordEngine:
         return best
 
     def reset(self) -> None:
+        """Clear the models' streaming state; the refractory period is kept."""
         if self.runner is not None:
             self.runner.reset()
