@@ -49,7 +49,7 @@ The `ci` workflow runs everything below except validate and image builds. On a h
   newer; the integration runs on Home Assistant's Python (3.14).
 - **Hardware stays behind the BSP split:** board-specific choices go in `kas/machine/<board>.yml` and
   `meta-ha-slate/dynamic-layers/<bsp>/`, never in the common layer (SPEC §3.2).
-- **Layer pins:** every kas repository is pinned to an exact commit; bump one on purpose, in its own change.
+- **Layer pins:** every kas repository is pinned to an exact commit.
 - **Agent dependencies** are pinned in `apps/slate-agent/requirements-target.txt` and shipped as hash-pinned aarch64
   wheels: after changing a pin, regenerate `slate-agent-wheels.inc` with `scripts/gen-wheels.py` (SPEC §13.6). Don't
   replace the wheels with a from-source recipe: the sdists bundle an x86-64 TFLite library (SPEC §8.9).

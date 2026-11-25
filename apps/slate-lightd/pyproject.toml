@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools>=61"]
+# Scarthgap's python3-setuptools: the image builds with it (python_setuptools_build_meta, no isolation).
+requires = ["setuptools==69.1.1"]
 build-backend = "setuptools.build_meta"
 
 [project]

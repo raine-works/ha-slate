@@ -72,6 +72,13 @@ class LightController:
 
 
 def apply(engine: Engine, req: dict[str, Any], controller: LightController | None = None) -> dict[str, Any]:
+    """Carry out one control socket request and return its JSON reply.
+
+    ``req`` holds one of ``voice_event``, ``light``, ``claim``, ``release`` or ``status``;
+    anything else gets ``{"ok": False, ...}``. ``voice_event`` and ``light`` need a
+    ``controller``. Malformed requests raise ``ValueError``, ``TypeError`` or ``KeyError``,
+    which ``serve`` turns into an error reply.
+    """
     if "voice_event" in req:
         if controller is None:
             raise ValueError("voice events not supported")
@@ -108,6 +115,12 @@ def apply(engine: Engine, req: dict[str, Any], controller: LightController | Non
 
 
 async def serve(engine: Engine, path: str, controller: LightController | None = None) -> asyncio.AbstractServer:
+    """Listen on the Unix socket ``path`` for newline-delimited JSON requests (see ``apply``).
+
+    A stale socket file is replaced, and the new one is made group-writable (0660) so only
+    the daemon's group can drive the lights. Returns the running server; the caller closes it.
+    """
+
     async def handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
             while line := await reader.readline():

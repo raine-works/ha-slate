@@ -66,4 +66,5 @@ def scan(config_dir: Path) -> dict[str, CustomWakeWord]:
 
 
 async def async_scan(hass: HomeAssistant) -> dict[str, CustomWakeWord]:
+    """``scan`` Home Assistant's custom wake word folder in the executor, off the event loop."""
     return await hass.async_add_executor_job(scan, Path(hass.config.path(WAKE_WORDS_DIR_NAME)))

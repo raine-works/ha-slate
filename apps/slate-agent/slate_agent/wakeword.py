@@ -51,10 +51,11 @@ _SENSITIVITY = {
 
 
 class WakeWordError(ValueError):
-    pass
+    """A wake word model or its config was refused; the message says why."""
 
 
 def normalize_type(value: str) -> str:
+    """Map the spellings of a model type to ``TYPE_MICRO`` or ``TYPE_OWW``; else raise ``WakeWordError``."""
     v = str(value).strip().lower()
     if v in ("micro", "microwakeword", "mww"):
         return TYPE_MICRO
@@ -65,6 +66,8 @@ def normalize_type(value: str) -> str:
 
 @dataclass
 class WakeWordModel:
+    """One installed wake word model: its config, where the model file is, and whether it's built in."""
+
     id: str
     wake_word: str
     type: str
@@ -76,12 +79,19 @@ class WakeWordModel:
     sha256: str | None = None
 
     def describe(self) -> dict[str, Any]:
+        """The model as reported to Home Assistant (no paths or tuning)."""
         return {"id": self.id, "wake_word": self.wake_word, "type": self.type,
                 "trained_languages": self.trained_languages, "builtin": self.builtin,
                 "sha256": self.sha256}
 
 
 def parse_config(model_id: str, config: dict[str, Any], model_path: Path) -> WakeWordModel:
+    """Validate a model's JSON config (the format of Home Assistant's wake word folder) into a model.
+
+    microWakeWord models need ``micro.probability_cutoff``; openWakeWord ones default to 0.5.
+    Raises ``WakeWordError`` for a missing wake word, an unknown type or a cutoff outside (0, 1),
+    and ``ValueError`` or ``TypeError`` for an openWakeWord cutoff that isn't a number.
+    """
     if not isinstance(config, dict):
         raise WakeWordError("config must be a JSON object")
     if not str(config.get("wake_word", "")).strip():

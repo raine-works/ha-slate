@@ -49,6 +49,12 @@ _TABLE = _byte_table()
 
 
 def encode(frame: list[tuple[int, int, int]], color_order: str = "GRB") -> bytes:
+    """Encode an 8-bit frame as the SPI byte stream that draws it, latch gap included.
+
+    ``color_order`` is the order the strip expects its channels in (WS2812B: ``GRB``); it must
+    be a permutation of ``RGB``, or ``ValueError`` is raised. Each LED takes 12 bytes, plus
+    ``RESET_BYTES`` at the end.
+    """
     idx = ["RGB".index(c) for c in color_order.upper()]
     out = bytearray()
     for px in frame:
@@ -59,6 +65,13 @@ def encode(frame: list[tuple[int, int, int]], color_order: str = "GRB") -> bytes
 
 
 class Ws2812SpiBackend(Backend):
+    """A WS2812/SK6812 strip on spidev ``device``.
+
+    Opening configures the bus (mode 0, 8-bit words, ``speed_hz``) and raises ``OSError`` if
+    the device can't be opened or set up, ``ValueError`` for a bad ``color_order``. Closing
+    blanks the strip before releasing the device.
+    """
+
     def __init__(self, led_count: int, device: str, speed_hz: int = 3_200_000, color_order: str = "GRB") -> None:
         if sorted(color_order.upper()) != ["B", "G", "R"]:
             raise ValueError("color_order must be a permutation of RGB")

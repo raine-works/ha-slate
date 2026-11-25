@@ -61,10 +61,15 @@ def ensure_certificate(state_dir: Path, common_name: str) -> tuple[Path, Path, s
 
 
 def fingerprint(cert_pem: str) -> str:
+    """SHA-256 of the certificate's DER encoding, as hex: what Home Assistant pins at pairing."""
     return hashlib.sha256(ssl.PEM_cert_to_DER_cert(cert_pem)).hexdigest()
 
 
 def server_ssl_context(cert: Path, key: Path) -> ssl.SSLContext:
+    """TLS server context for the agent's port: TLS 1.2 or later, serving ``cert`` with ``key``.
+
+    Raises ``ssl.SSLError`` or ``OSError`` if the pair can't be loaded.
+    """
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     ctx.load_cert_chain(cert, key)

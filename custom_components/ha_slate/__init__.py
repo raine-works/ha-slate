@@ -33,6 +33,12 @@ type SlateConfigEntry = ConfigEntry[SlateDevice]
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Register the integration's ``sync_wake_words`` service, which pushes to every loaded panel.
+
+    The service returns each panel's result by entry title, and raises ``HomeAssistantError``
+    at the first panel that fails.
+    """
+
     async def _sync(call: ServiceCall) -> ServiceResponse:
         results = {}
         for entry in hass.config_entries.async_loaded_entries(DOMAIN):
@@ -48,6 +54,12 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: SlateConfigEntry) -> bool:
+    """Connect to a paired panel and set up its entities.
+
+    Raises ``ConfigEntryAuthFailed`` (which starts reauth) when the panel refuses the token or its
+    certificate doesn't match the pinned fingerprint, and ``ConfigEntryNotReady`` (which retries)
+    when it can't be reached.
+    """
     device = SlateDevice(hass, entry)
     try:
         await device.async_connect_first()
@@ -61,6 +73,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: SlateConfigEntry) -> boo
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: SlateConfigEntry) -> bool:
+    """Remove a panel's entities and, once they're gone, close its connection."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         await entry.runtime_data.async_stop()
