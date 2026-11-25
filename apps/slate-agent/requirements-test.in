@@ -1,0 +1,3 @@
+-r requirements-target.txt
+pytest
+pytest-asyncio

@@ -1,0 +1,9 @@
+pytest-homeassistant-custom-component
+websockets==12.0
+hassil
+home-assistant-intents
+ha-ffmpeg
+mutagen
+pymicro-vad
+pyspeex-noise
+gazetteer-matcher
