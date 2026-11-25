@@ -1,0 +1,10 @@
+# HA Slate A/B layout for eMMC (CM4). MBR: the RPi boot ROM requires it.
+#  p1 boot     vfat  firmware, config.txt, U-Boot, boot.scr, uboot.env
+#  p2 rootfs_a ext4  read-only root incl. /boot/Image  (RAUC slot A)
+#  p3 rootfs_b ext4  read-only root                    (RAUC slot B)
+#  p4 data     ext4  /data: tokens, preferences, logs; grown on first boot
+bootloader --ptable msdos
+part /boot --source bootimg-partition --ondisk mmcblk0 --fstype=vfat --label boot --active --align 4096 --size 128M
+part /     --source rootfs --ondisk mmcblk0 --fstype=ext4 --label rootfs_a --align 4096 --fixed-size 1536M
+part       --source rootfs --ondisk mmcblk0 --fstype=ext4 --label rootfs_b --align 4096 --fixed-size 1536M
+part       --ondisk mmcblk0 --fstype=ext4 --label slate-data --align 4096 --size 512M

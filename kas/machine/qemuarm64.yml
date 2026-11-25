@@ -1,0 +1,15 @@
+# Development / CI target: full image under QEMU with virtio-gpu.
+#   kas build kas/machine/qemuarm64.yml
+#   kas shell kas/machine/qemuarm64.yml -c "runqemu slirp nographic"   (headless)
+#   kas shell kas/machine/qemuarm64.yml -c "runqemu slirp gl sdl"       (with GPU)
+header:
+  version: 14
+  includes:
+    - kas/slate.yml
+
+machine: qemuarm64
+
+local_conf_header:
+  qemu: |
+    # No LED hardware in QEMU: preview the bar on the serial console.
+    SLATE_LIGHTD_BACKEND = "console"

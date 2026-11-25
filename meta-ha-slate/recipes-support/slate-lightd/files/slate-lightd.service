@@ -1,0 +1,31 @@
+[Unit]
+Description=HA Slate edge light bar daemon
+DefaultDependencies=no
+After=local-fs.target systemd-udevd.service
+# Must be connected before LVA's --peripheral-startup-wait window closes so
+# that HA enumerates the Edge Light / Display entities.
+Before=slate-voice.service
+RequiresMountsFor=/data
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/slate-lightd --config /etc/slate/lightd.toml
+Restart=always
+RestartSec=1
+# Needs: /dev/spidev* (group spi or root), /sys/class/leds, /sys/class/backlight.
+# Runs as root for sysfs writes; everything else is locked down.
+RuntimeDirectory=slate-lightd
+Environment=PYTHONUNBUFFERED=1
+# strict = read-only /usr,/etc; /dev,/proc,/sys stay writable for LED I/O.
+ProtectSystem=strict
+ReadWritePaths=/data/lightd
+ProtectHome=yes
+PrivateTmp=yes
+PrivateNetwork=no
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+NoNewPrivileges=yes
+# Smooth animation under load without real-time scheduling a Python process.
+Nice=-5
+
+[Install]
+WantedBy=sysinit.target

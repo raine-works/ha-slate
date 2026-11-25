@@ -1,0 +1,24 @@
+# PipeWire ships no *system* unit for its PulseAudio shim; this is it.
+# The voice service (soundcard + mpv) speaks the Pulse protocol.
+[Unit]
+Description=PipeWire PulseAudio compatibility (system instance)
+Requires=pipewire.service
+After=pipewire.service wireplumber.service
+
+[Service]
+Type=simple
+User=pipewire
+Group=pipewire
+Environment=PIPEWIRE_RUNTIME_DIR=/run/pipewire
+Environment=PULSE_RUNTIME_PATH=/run/pipewire-pulse
+RuntimeDirectory=pipewire-pulse
+RuntimeDirectoryMode=0750
+UMask=0007
+ExecStart=/usr/bin/pipewire-pulse
+Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+
+[Install]
+WantedBy=slate-audio.target

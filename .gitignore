@@ -1,0 +1,12 @@
+# Build output (kas/bitbake)
+/build/
+/sstate-cache/
+/downloads/
+/layers/
+# Signing material: never commit private keys
+/keys/
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/

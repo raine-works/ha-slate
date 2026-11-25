@@ -1,0 +1,13 @@
+#!/bin/sh
+# RAUC system handler: mirror update state on the edge light bar.
+# Invoked as pre-install / post-install with RAUC_* variables in the env.
+LIGHTCTL="/usr/bin/slate-lightctl"
+[ -x "$LIGHTCTL" ] || exit 0
+
+case "$1" in
+    pre-install)
+        "$LIGHTCTL" claim system scan --color 255,255,255 --brightness 0.5 >/dev/null 2>&1 ;;
+    post-install)
+        "$LIGHTCTL" claim system solid --color 0,255,60 --brightness 0.5 --ttl 3 >/dev/null 2>&1 ;;
+esac
+exit 0

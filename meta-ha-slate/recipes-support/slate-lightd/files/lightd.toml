@@ -1,0 +1,32 @@
+# Product defaults for the reference hardware. Site overrides are not
+# supported here on purpose: LED topology and power limits are hardware facts.
+[bar]
+backend   = "ws2812-spi"
+led_count = 48
+reverse   = false
+gamma     = 2.2
+fps       = 50
+
+[bar.ws2812_spi]
+device      = "/dev/spidev0.0"
+speed_hz    = 3200000
+color_order = "GRB"
+
+[power]
+max_current_ma       = 600
+ma_per_channel       = 20
+quiescent_ma_per_led = 1.0
+
+[display]
+backlight = "auto"
+min_level = 0.05
+
+[lva]
+enabled = true
+url     = "ws://127.0.0.1:6055"
+
+[theme]
+accent = [0, 110, 255]
+
+[state]
+file = "/data/lightd/state.json"

@@ -1,0 +1,14 @@
+[Unit]
+Description=Apply site network overrides from /data/slate/network
+DefaultDependencies=no
+RequiresMountsFor=/data
+Before=systemd-networkd.service
+ConditionDirectoryNotEmpty=/data/slate/network
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'mkdir -p /run/systemd/network && cp /data/slate/network/*.network /run/systemd/network/'
+
+[Install]
+WantedBy=sysinit.target

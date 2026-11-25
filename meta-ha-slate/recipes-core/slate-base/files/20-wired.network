@@ -1,0 +1,15 @@
+# Default: DHCP on the (PoE) Ethernet port. Site overrides go in
+# /data/slate/network/*.network (copied to /run/systemd/network at boot).
+[Match]
+Type=ether
+
+[Network]
+DHCP=yes
+IPv6AcceptRA=yes
+MulticastDNS=resolve
+# Advertise ourselves to managed PoE switches (port/VLAN mapping in the switch UI).
+LLDP=yes
+EmitLLDP=nearest-bridge
+
+[DHCPv4]
+UseHostname=no

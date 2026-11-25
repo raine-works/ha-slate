@@ -1,0 +1,17 @@
+#!/bin/sh
+# Launch Cog fullscreen on the Weston kiosk-shell.
+# All knobs come from /etc/slate/kiosk.env, overridden by /data/slate/kiosk.env.
+set -eu
+
+: "${KIOSK_URL:?KIOSK_URL not set}"
+mkdir -p "$XDG_DATA_HOME" "$XDG_CACHE_HOME"
+
+set -- --platform=wl \
+       --webprocess-failure="${KIOSK_ON_CRASH:-restart}" \
+       --bg-color="${KIOSK_BG:-#000000}"
+
+[ -n "${KIOSK_SCALE:-}" ] && set -- "$@" --device-scale="$KIOSK_SCALE"
+# Only for self-signed HA instances on an isolated VLAN. Prefer a real cert.
+[ "${KIOSK_IGNORE_TLS_ERRORS:-0}" = "1" ] && set -- "$@" --ignore-tls-errors
+
+exec /usr/bin/cog "$@" "$KIOSK_URL"

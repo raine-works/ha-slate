@@ -1,0 +1,38 @@
+# /etc/slate/lightd.toml -- slate-lightd configuration
+# Keys not set here fall back to the defaults in slate_lightd/__main__.py.
+
+[bar]
+# ws2812-spi : WS2812/SK6812 chain on an SPI MOSI line (see docs/SPEC.md)
+# sysfs      : RGB segments on an I2C LED driver with a kernel driver (LP50xx...)
+# console    : truecolor preview on stdout (QEMU / dev host)
+backend   = "ws2812-spi"
+led_count = 48
+reverse   = false       # flip if the strip is wired right-to-left
+gamma     = 2.2
+fps       = 50
+
+[bar.ws2812_spi]
+device      = "/dev/spidev0.0"
+speed_hz    = 3200000   # 4 SPI bits per data bit -> 800 kbit/s on the wire
+color_order = "GRB"     # WS2812B: GRB. Some clones: RGB.
+
+[bar.sysfs]
+# LED class device names, in physical order, as named in the device tree.
+leds = ["edge:rgb:0", "edge:rgb:1", "edge:rgb:2", "edge:rgb:3"]
+
+[power]
+# Budget for the bar's 5 V rail. See docs/SPEC.md "Power budget".
+max_current_ma       = 600
+ma_per_channel       = 20
+quiescent_ma_per_led = 1.0
+
+[display]
+backlight = "auto"      # first device in /sys/class/backlight, or a name
+min_level = 0.05
+
+[lva]
+enabled = true
+url     = "ws://127.0.0.1:6055"
+
+[theme]
+accent = [0, 110, 255]

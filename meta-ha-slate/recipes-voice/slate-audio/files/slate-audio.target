@@ -1,0 +1,8 @@
+[Unit]
+Description=HA Slate audio stack (PipeWire, WirePlumber, pulse shim)
+Requires=pipewire.service
+Wants=wireplumber.service slate-pipewire-pulse.service
+After=pipewire.service wireplumber.service slate-pipewire-pulse.service
+
+[Install]
+WantedBy=multi-user.target

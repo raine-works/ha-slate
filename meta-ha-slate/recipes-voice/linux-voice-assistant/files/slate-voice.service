@@ -1,0 +1,42 @@
+[Unit]
+Description=HA Slate voice satellite (Linux Voice Assistant)
+Wants=network-online.target slate-lightd.service
+After=network-online.target slate-audio.target slate-lightd.service
+Requires=slate-audio.target
+RequiresMountsFor=/data
+
+[Service]
+Type=simple
+User=voice
+Group=voice
+SupplementaryGroups=audio pipewire
+EnvironmentFile=/etc/slate/slate.env
+EnvironmentFile=-/data/slate/slate.env
+EnvironmentFile=/etc/slate/voice.env
+EnvironmentFile=-/data/slate/voice.env
+Environment=PULSE_SERVER=unix:/run/pipewire-pulse/native
+Environment=PIPEWIRE_RUNTIME_DIR=/run/pipewire
+Environment=HOME=/data/voice
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=@LIBEXECDIR@/slate-voice-launch
+Restart=always
+RestartSec=3
+
+# Audio latency: modest RT priority for the capture/wake-word thread.
+Nice=-10
+IOSchedulingClass=realtime
+LimitRTPRIO=20
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/data/voice
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+MemoryMax=400M
+
+[Install]
+WantedBy=multi-user.target

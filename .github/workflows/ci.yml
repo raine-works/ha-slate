@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lightd:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"   # matches Scarthgap's target CPython
+      - run: pip install "websockets==12.0" pytest
+      - run: pytest -q
+        working-directory: apps/slate-lightd
+
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y shellcheck
+      - run: >
+          shellcheck -s sh
+          meta-ha-slate/recipes-kiosk/slate-kiosk/files/slate-kiosk-launch
+          meta-ha-slate/recipes-voice/linux-voice-assistant/files/slate-voice-launch
+          meta-ha-slate/dynamic-layers/rauc/recipes-core/rauc/files/slate-rauc-hook
+          scripts/gen-dev-keys.sh
+      # Validates kas schema and that every pinned layer commit is fetchable.
+      - run: pip install kas==5.5 && kas dump kas/machine/cm4.yml > /dev/null
+
+# Full image builds need a large self-hosted runner (see docs/SPEC.md §13.1):
+#   scripts/gen-dev-keys.sh && kas build kas/machine/qemuarm64.yml

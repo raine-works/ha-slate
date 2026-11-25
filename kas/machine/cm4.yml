@@ -1,0 +1,35 @@
+# Reference hardware: Raspberry Pi CM4 (eMMC) on a custom PoE carrier with a
+# MIPI-DSI panel, I2C touch, I2S mic/amp and a WS2812 edge bar on SPI0.
+#   scripts/gen-dev-keys.sh
+#   kas build kas/machine/cm4.yml
+#   kas build kas/machine/cm4.yml --target slate-bundle    (RAUC update)
+header:
+  version: 14
+  includes:
+    - kas/slate.yml
+    - kas/feature/rauc.yml
+
+machine: raspberrypi4-64
+
+repos:
+  meta-raspberrypi:
+    url: https://github.com/agherzan/meta-raspberrypi
+    commit: 018d44467c4f09eb63f8ea5e86e85d755250cf89
+
+local_conf_header:
+  cm4: |
+    RPI_USE_U_BOOT = "1"
+    ENABLE_UART = "1"
+    ENABLE_SPI_BUS = "1"
+    ENABLE_I2C = "1"
+    DISABLE_SPLASH = "1"
+    DISABLE_RPI_BOOT_LOGO = "1"
+    # Carrier-specific overlays (panel, touch, codec) go here, e.g.:
+    #   dtoverlay=vc4-kms-v3d
+    #   dtoverlay=vc4-kms-dsi-7inch
+    RPI_EXTRA_CONFIG = "\n# HA Slate\ndtoverlay=vc4-kms-v3d\ndisable_overscan=1\n"
+    IMAGE_FSTYPES = "wic.bz2 wic.bmap ext4"
+    WKS_FILE = "slate-rpi-ab.wks.in"
+    # Kernel cmdline: rootfs comes from boot.scr (slot selection), not here.
+    CMDLINE_ROOTFS = ""
+    SERIAL_CONSOLES = "115200;ttyS0"

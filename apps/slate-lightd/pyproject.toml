@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slate-lightd"
+version = "0.1.0"
+description = "Edge light bar and backlight daemon for the HA Slate panel"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = ["websockets>=12"]
+
+[project.scripts]
+slate-lightd = "slate_lightd.__main__:main"
+slate-lightctl = "slate_lightd.ctl:main"
+
+[tool.setuptools.packages.find]
+include = ["slate_lightd", "slate_lightd.*"]

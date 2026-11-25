@@ -1,0 +1,49 @@
+# Base kas configuration for HA Slate. Do not build this file directly:
+# build a machine file, e.g.  kas build kas/machine/qemuarm64.yml
+header:
+  version: 14
+
+distro: slate
+target: slate-image
+
+defaults:
+  repos:
+    # Every layer is pinned to an exact commit; bump deliberately.
+    branch: scarthgap
+
+repos:
+  ha-slate:
+    layers:
+      meta-ha-slate:
+
+  poky:
+    url: https://git.yoctoproject.org/poky
+    commit: 1397cd85032d1582fa4f2512a3f378d71ca39291
+    layers:
+      meta:
+      meta-poky:
+
+  meta-openembedded:
+    url: https://git.openembedded.org/meta-openembedded
+    commit: 96c2c78e13ff1b954715ff3c6d26bddd50a02509
+    layers:
+      meta-oe:
+      meta-python:
+      meta-multimedia:
+      meta-networking:
+
+  meta-webkit:
+    url: https://github.com/Igalia/meta-webkit
+    commit: 2d29669a3d78e462276044f3f8bde0e4dec33696
+
+local_conf_header:
+  slate-base: |
+    # Share caches between machines and CI runs.
+    DL_DIR ?= "${TOPDIR}/../downloads"
+    SSTATE_DIR ?= "${TOPDIR}/../sstate-cache"
+    BB_GENERATE_MIRROR_TARBALLS = "1"
+    # Remove work dirs after each recipe to fit CI disks (WPE is large).
+    INHERIT += "rm_work"
+    RM_WORK_EXCLUDE += "slate-lightd slate-kiosk linux-voice-assistant"
+    # Fail on QA issues instead of warning about them.
+    ERROR_QA:append = " version-going-backwards"

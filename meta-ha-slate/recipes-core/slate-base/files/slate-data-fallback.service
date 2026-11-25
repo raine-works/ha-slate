@@ -1,0 +1,15 @@
+[Unit]
+Description=Mount tmpfs on /data when the persistent data partition is missing
+DefaultDependencies=no
+After=local-fs-pre.target data.mount
+Before=local-fs.target
+ConditionPathIsMountPoint=!/data
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/mount -t tmpfs -o mode=0755,nodev,nosuid,size=64M tmpfs /data
+ExecStart=/bin/echo "slate: WARNING /data is volatile (no slate-data partition)"
+
+[Install]
+WantedBy=local-fs.target
