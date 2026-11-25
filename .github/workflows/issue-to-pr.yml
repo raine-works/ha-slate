@@ -1,0 +1,34 @@
+# Issue to PR: an issue opened by the owner, any issue once it's labelled `claude` (as the rules audit's is), or an
+# issue the owner (or a collaborator) comments `@claude` on is worked by Claude into a pull request, which Claude then
+# sees through its checks and Code review's findings until it's approved. The workflow is Raineworks', in
+# raine-works/agents (.github/workflows/issue-to-pr.yml): this file only calls it, and comes from the raineworks-base
+# skill's templates/workflows/issue-to-pr.yml. Change the workflow there, for every repository at once; here, only its
+# triggers' CI name and its inputs (with:). The Base rules check moves the pin when the shared workflows change.
+name: Issue to PR
+
+on:
+  issues:
+    types: [opened, labeled]
+  # An @claude comment on an issue
+  issue_comment:
+    types: [created]
+  # Its follow-up: after the review, and after the repository's CI (its workflow's name), on Claude's pull requests.
+  workflow_run:
+    workflows: [Code review, ci]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+jobs:
+  issue-to-pr:
+    name: Issue to PR
+    uses: raine-works/agents/.github/workflows/issue-to-pr.yml@8d50b54592ee925341854a8a0aa2130336a1c416 # raine-works/agents master
+    secrets: inherit
+    # The commands Claude may run: the checks in ci.yml (and regenerating their pinned requirements).
+    with:
+      allowed-commands: Bash(pip install -r requirements-test.txt),Bash(pip install -r apps/slate-agent/requirements-test.txt),Bash(pip install -r apps/slate-lightd/requirements-test.txt),Bash(pytest:*),Bash(python -m pytest:*),Bash(shellcheck:*),Bash(uv pip compile:*)
