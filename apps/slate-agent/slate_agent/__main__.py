@@ -32,6 +32,11 @@ def _sd_notify(msg: str) -> None:
 
 
 async def run(args: argparse.Namespace) -> None:
+    """Run the agent with the parsed command line until SIGTERM or SIGINT.
+
+    Creates the device ID and TLS certificate on first run, serves the Slate Link over TLS,
+    advertises over mDNS (unless ``--no-zeroconf``), and reports ready to systemd.
+    """
     import websockets
 
     state = Path(args.state_dir)
@@ -79,6 +84,7 @@ async def run(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    """The ``slate-agent`` command: parse the arguments and run the agent."""
     p = argparse.ArgumentParser(prog="slate-agent", description=__doc__)
     p.add_argument("--state-dir", default="/data/agent")
     p.add_argument("--host", default="0.0.0.0")

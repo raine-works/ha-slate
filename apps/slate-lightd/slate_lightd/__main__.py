@@ -32,6 +32,11 @@ DEFAULTS: dict[str, Any] = {
 
 
 def load_config(path: str | None) -> dict[str, Any]:
+    """Return ``DEFAULTS`` overlaid, section by section, with the TOML file at ``path``.
+
+    A missing file (or no ``path``) gives the defaults; a malformed one raises
+    ``tomllib.TOMLDecodeError``.
+    """
     cfg = json.loads(json.dumps(DEFAULTS))  # deep copy
     if path and os.path.exists(path):
         with open(path, "rb") as f:
@@ -41,6 +46,7 @@ def load_config(path: str | None) -> dict[str, Any]:
 
 
 def sd_notify(msg: str) -> None:
+    """Send ``msg`` (e.g. ``READY=1``) to systemd's notify socket; does nothing outside systemd."""
     addr = os.environ.get("NOTIFY_SOCKET")
     if not addr:
         return
@@ -75,6 +81,12 @@ class StateStore:
 
 
 async def main_async(cfg: dict[str, Any]) -> None:
+    """Run the daemon with config ``cfg`` until SIGTERM or SIGINT.
+
+    Opens the backend and backlight, restores the saved lights, starts the control socket,
+    reports ready to systemd, and on a signal blanks the bar and stops. Raises what the
+    backend raises if its device can't be opened.
+    """
     bar = cfg["bar"]
     backend_opts = dict(bar.get(bar["backend"].replace("-", "_"), {}))
     backend = backends.create(bar["backend"], int(bar["led_count"]), backend_opts)
@@ -120,6 +132,7 @@ async def main_async(cfg: dict[str, Any]) -> None:
 
 
 def main() -> None:
+    """The ``slate-lightd`` command: parse the arguments, load the config and run the daemon."""
     p = argparse.ArgumentParser(prog="slate-lightd", description=__doc__)
     p.add_argument("-c", "--config", default="/etc/slate/lightd.toml")
     p.add_argument("--backend", help="override [bar].backend (console, null, ws2812-spi, sysfs)")

@@ -16,6 +16,10 @@ DEFAULT_SOCKET = "/run/slate-lightd/control.sock"
 
 
 def send(path: str, req: dict) -> dict:
+    """Send one request to the control socket at ``path`` and return slate-lightd's reply.
+
+    Raises ``OSError`` if the daemon isn't reachable or doesn't answer within 2 s.
+    """
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
         s.settimeout(2)
         s.connect(path)
@@ -24,6 +28,10 @@ def send(path: str, req: dict) -> dict:
 
 
 def main() -> None:
+    """The ``slate-lightctl`` command: prints the reply as JSON.
+
+    Exits 0 on success, 1 when the daemon refused the request, 2 when it couldn't be reached.
+    """
     p = argparse.ArgumentParser(prog="slate-lightctl")
     p.add_argument("--socket", default=DEFAULT_SOCKET)
     sub = p.add_subparsers(dest="cmd", required=True)

@@ -18,14 +18,17 @@ Effect = Callable[[float, int, RGB, float], Frame]
 
 
 def off(t: float, n: int, color: RGB, value: float) -> Frame:
+    """Every LED dark."""
     return [BLACK] * n
 
 
 def solid(t: float, n: int, color: RGB, value: float) -> Frame:
+    """Every LED at ``color``."""
     return [color] * n
 
 
 def breathe(t: float, n: int, color: RGB, value: float, period: float = 3.0) -> Frame:
+    """Fade the whole bar between 15% and full ``color`` over ``period`` seconds; never fully dark."""
     k = 0.15 + 0.85 * (0.5 - 0.5 * math.cos(2 * math.pi * t / period))
     return [scale(color, k)] * n
 

@@ -30,6 +30,10 @@ import urllib.request
 
 
 def main() -> None:
+    """Download the target's wheel closure and write the BitBake include (see the module docstring).
+
+    Exits non-zero if pip can't find a wheel for every requirement on the target.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--requirements", required=True, help="pip requirements file (pinned)")
     ap.add_argument("--python", default="3.12")

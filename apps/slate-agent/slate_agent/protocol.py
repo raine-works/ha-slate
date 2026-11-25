@@ -44,16 +44,23 @@ MIC_CHANNELS = 1
 
 
 def proof(token: str, nonce: str) -> str:
+    """Answer an auth challenge: HMAC-SHA256 of the hex ``nonce`` under the paired ``token``, as hex.
+
+    Raises ``ValueError`` if ``nonce`` isn't hex.
+    """
     return hmac.new(token.encode(), bytes.fromhex(nonce), hashlib.sha256).hexdigest()
 
 
 def verify_proof(token: str, nonce: str, candidate: str) -> bool:
+    """Check a peer's answer to ``nonce`` in constant time, so timing reveals nothing about ``token``."""
     return hmac.compare_digest(proof(token, nonce), str(candidate))
 
 
 def encode(msg: dict[str, Any]) -> str:
+    """Serialise a control message as compact JSON, for a text WebSocket frame."""
     return json.dumps(msg, separators=(",", ":"))
 
 
 def frame(channel: int, payload: bytes) -> bytes:
+    """Build a binary WebSocket frame: a one-byte channel (``CH_MIC``, ``CH_SPK``, ``CH_FILE``), then ``payload``."""
     return bytes([channel]) + payload

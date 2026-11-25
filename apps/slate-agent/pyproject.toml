@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools>=61"]
+# Scarthgap's python3-setuptools, as in slate-lightd (the image copies the agent's source, not a wheel).
+requires = ["setuptools==69.1.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,11 +9,12 @@ version = "0.1.0"
 description = "HA Slate device agent: voice satellite, wake words and device control for Home Assistant"
 license = {text = "MIT"}
 requires-python = ">=3.12"
+# The same pins as requirements-target.txt (the image's wheel set): change both together.
 dependencies = [
-    "websockets>=12",
-    "zeroconf>=0.130",
-    "pymicro-wakeword>=2.5,<3",
-    "pyopen-wakeword>=1.1,<2",
+    "websockets==12.0",
+    "zeroconf==0.154.0",
+    "pymicro-wakeword==2.5.0",
+    "pyopen-wakeword==1.1.0",
 ]
 
 [project.scripts]

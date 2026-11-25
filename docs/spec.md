@@ -454,7 +454,7 @@ Home Assistant                                         Panel
   It has no codecs and no media player: HA sends raw PCM, and `pw-cat` plays it into the echo-cancel
   sink. So the device image no longer contains ffmpeg or mpv, and needs no `commercial` license flag.
 * **`ha_slate`** (installable through HACS, needs HA ≥ 2026.10) owns everything user-facing. It is
-  tested against HA 2026.10.4 with the real agent running in-process over TLS (14 tests).
+  tested against HA 2026.10.4 with the real agent running in-process over TLS (19 tests).
 
 ### 8.3 Slate Link protocol v1
 
@@ -849,7 +849,8 @@ Production: pull from your update server (hawkBit through `rauc-hawkbit-updater`
 ### 13.6 Upgrading the agent's dependencies
 
 ```sh
-# 1. edit apps/slate-agent/requirements-target.txt (pins)
+# 1. edit apps/slate-agent/requirements-target.txt (pins), the same pins in its pyproject.toml,
+#    and recompile requirements-test.txt (the command is in its header)
 # 2. regenerate the hash-pinned wheel set for the target (cp312 / glibc 2.39 / aarch64):
 scripts/gen-wheels.py --requirements apps/slate-agent/requirements-target.txt \
     --out meta-ha-slate/recipes-voice/slate-agent/slate-agent-wheels.inc
@@ -882,7 +883,7 @@ uv venv -p 3.14.10 .ha && uv pip install -p .ha/bin/python -r requirements-test.
 
 **Already checked in this repository:**
 
-* **`ha_slate` integration: 14 tests on HA 2026.10.4 (Python 3.14)**, each against the *real* agent
+* **`ha_slate` integration: 19 tests on HA 2026.10.4 (Python 3.14)**, each against the *real* agent
   running in-process over TLS:
   * Config flow: manual, zeroconf, a wrong-then-right pairing code, and an unreachable host.
   * All 14 entities created and available.
@@ -896,6 +897,8 @@ uv venv -p 3.14.10 .ha && uv pip install -p .ha/bin/python -r requirements-test.
     (`start_stage=wake_word`).
   * Announcement through real ffmpeg conversion, played byte-exact.
   * Timer forwarding, reconnect after the panel drops the session, and reauth after a factory reset.
+  * Refusals: a certificate that doesn't match the pinned fingerprint (no session; setup starts reauth),
+    and a panel speaking another protocol version (no session, setup retries, pairing refused).
 * **`slate-agent`: 28 tests.** HMAC auth, pairing window/code/lockout, certificate stability, settings
   validation, the wake word store (install / reject bad id, hash, non-TFLite, missing cutoff, unknown type /
   remove), engine thresholds, sensitivity presets, refractory period and the 2-model limit. TLS sessions
