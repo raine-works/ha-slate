@@ -12,7 +12,7 @@ writes one SRC_URI entry (exact PyPI URL + sha256) per wheel.
 Why wheels: the wake word engines (pymicro-wakeword / pyopen-wakeword) bundle a
 TensorFlow Lite C library and depend on numpy >= 2 and a C feature extractor.
 Their sdists even ship an x86-64 build of the library, so a from-source recipe
-silently produces a broken image. docs/SPEC.md ("Packaging strategy")
+silently produces a broken image. docs/spec.md ("Packaging strategy")
 describes the path to fully native recipes.
 """
 

@@ -4,7 +4,7 @@
   "codeowners": [],
   "config_flow": true,
   "dependencies": ["assist_pipeline", "assist_satellite", "ffmpeg", "intent", "tts"],
-  "documentation": "https://github.com/raine-works/ha-slate/blob/main/docs/SPEC.md",
+  "documentation": "https://github.com/raine-works/ha-slate/blob/master/docs/README.md",
   "integration_type": "device",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/raine-works/ha-slate/issues",
