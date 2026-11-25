@@ -28,13 +28,16 @@ the reasons behind both are in [`docs/spec.md`](docs/spec.md); read the section 
 
 ### Build and test
 
-The `ci` workflow runs everything below except image builds. On a host (details in SPEC §13.7):
+The `ci` workflow runs everything below except validate and image builds. On a host (details in SPEC §13.7):
 
-- **lightd:** `pytest -q` in `apps/slate-lightd` (Python 3.12).
-- **agent:** `pip install -r requirements-target.txt pytest pytest-asyncio`, then `pytest -q`, in `apps/slate-agent`
+- **lightd:** `pip install -r requirements-test.txt`, then `pytest -q`, in `apps/slate-lightd` (Python 3.12).
+- **agent:** `pip install -r requirements-test.txt`, then `pytest -q`, in `apps/slate-agent`
   (Python 3.12; `espeak-ng` installed enables the real wake word detection test).
-- **integration:** `pytest -q tests/ha_slate` from the root, on Python 3.14 with `pytest-homeassistant-custom-component`
-  and the packages `ci.yml` installs.
+- **integration:** `pip install -r requirements-test.txt`, then `pytest -q tests/ha_slate`, from the root, on
+  Python 3.14.
+- **test dependencies** are pinned in each `requirements-test.txt`, compiled with `uv pip compile` from the
+  `requirements-test.in` beside it (the file's header has the command): change the `.in` and recompile.
+- **validate:** the `Validate` workflow runs hassfest and HACS validation on the integration.
 - **lint:** `shellcheck -s sh` on the shell scripts listed in `ci.yml` (add new ones there), and
   `kas dump kas/machine/cm4.yml` to validate the kas files.
 - **image:** `scripts/gen-dev-keys.sh && kas build kas/machine/qemuarm64.yml` (SPEC §13.2). It needs a large host
