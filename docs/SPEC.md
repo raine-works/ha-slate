@@ -871,9 +871,16 @@ uv venv -p 3.14 .ha && uv pip install -p .ha/bin/python pytest-homeassistant-cus
   ESPHome satellite implementations, the `custom_wake_words` convention, and timer handlers; also
   `weston-init`, Cog 0.18 options and paths, PipeWire 1.0.9 system units and `pw-cat` raw stdio, and the
   pymicro/pyopen-wakeword APIs.
-* BitBake against the pinned Scarthgap layers: the v0.1 layer parsed cleanly and resolved full task
-  graphs for `qemuarm64` and `cm4` (+ RAUC bundle). Re-validation of this v0.2 layer (slate-agent
-  replaces LVA, mpv/ffmpeg removed) is in progress; its result is recorded in the next revision.
+* BitBake against the pinned Scarthgap layers (this v0.2 layer):
+  * `qemuarm64`: 2835 recipes parse with 0 errors. `bitbake -n slate-image slate-image-dev` resolves
+    the full task graph (7,721 tasks), so every `RDEPENDS` has a provider.
+  * `cm4` (+ meta-raspberrypi + meta-rauc): 2899 recipes parse, and `bitbake -n slate-image slate-bundle`
+    resolves (7,644 tasks).
+  * `bitbake -c unpack` of every product recipe, with the BitBake fetcher downloading and
+    sha256-checking all 7 agent wheels.
+  * The only error in these runs is the sandbox blocking the `uninative` tarball download, not the
+    configuration. An earlier dry run caught one real bug (mpv not building `libmpv`), which the
+    move to slate-agent has since made moot.
 * Shell scripts pass `shellcheck`. Unit files pass `systemd-analyze verify` with no unknown keys.
 
 **Not yet run.** No full image compile (it needs a build host, §13.1), so compile-time and
