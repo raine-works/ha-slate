@@ -16,7 +16,7 @@ from . import backends, control
 from .color import from_bytes
 from .display import Backlight, find_backlight
 from .engine import Engine
-from .lva import VoiceBridge, run_client
+from .bridge import VoiceBridge
 from .power import PowerBudget
 
 _LOG = logging.getLogger("slate_lightd")
@@ -25,7 +25,6 @@ DEFAULTS: dict[str, Any] = {
     "bar": {"backend": "console", "led_count": 24, "reverse": False, "gamma": 2.2, "fps": 50},
     "power": {"max_current_ma": 600, "ma_per_channel": 20, "quiescent_ma_per_led": 1.0},
     "display": {"backlight": "auto", "min_level": 0.05},
-    "lva": {"enabled": True, "url": "ws://127.0.0.1:6055"},
     "theme": {"accent": [0, 110, 255]},
     "control": {"socket": "/run/slate-lightd/control.sock"},
     "state": {"file": "/var/lib/slate-lightd/state.json"},
@@ -88,27 +87,14 @@ async def main_async(cfg: dict[str, Any]) -> None:
     bl_path = find_backlight(str(cfg["display"]["backlight"]))
     backlight = Backlight(bl_path, float(cfg["display"]["min_level"])) if bl_path else None
 
-    def on_user_light(data: dict[str, Any]) -> None:
-        bridge.apply_user_light(data)
-        state["edge"] = data
-        store.save(state)
-
-    def on_display(data: dict[str, Any]) -> None:
-        assert backlight is not None
-        backlight.apply(data)
-        state["display"] = data
-        store.save(state)
-
-    bridge = VoiceBridge(engine, accent, on_user_light, on_display if backlight else None)
-    if "edge" in state:
-        bridge.apply_user_light(state["edge"])
-    if backlight and "display" in state:
-        backlight.apply(state["display"])
-
+    bridge = VoiceBridge(engine, accent)
+    controller = control.LightController(engine, bridge, backlight, state, store.save)
+    # Until slate-agent reports a Home Assistant session, show "not connected".
+    bridge.handle({"event": "disconnected"})
     engine.claim("system:boot", "scan", accent, brightness=0.6, ttl=2.5, priority=90)
 
     os.makedirs(os.path.dirname(cfg["control"]["socket"]), exist_ok=True)
-    server = await control.serve(engine, cfg["control"]["socket"])
+    server = await control.serve(engine, cfg["control"]["socket"], controller)
 
     async def timer_ticker() -> None:
         while True:
@@ -117,8 +103,6 @@ async def main_async(cfg: dict[str, Any]) -> None:
                 bridge.tick_timers()
 
     tasks = [asyncio.create_task(engine.run()), asyncio.create_task(timer_ticker())]
-    if cfg["lva"]["enabled"]:
-        tasks.append(asyncio.create_task(run_client(cfg["lva"]["url"], bridge)))
 
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()

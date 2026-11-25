@@ -1,0 +1,13 @@
+{
+  "entity": {
+    "switch": { "muted": { "default": "mdi:microphone", "state": { "on": "mdi:microphone-off" } } },
+    "select": {
+      "wake_word_sensitivity": { "default": "mdi:tune-vertical" },
+      "wake_word_location": { "default": "mdi:account-voice" }
+    },
+    "light": { "edge_light": { "default": "mdi:led-strip-variant" }, "display": { "default": "mdi:monitor" } },
+    "text": { "kiosk_url": { "default": "mdi:web" } },
+    "event": { "wake_word": { "default": "mdi:account-voice" } }
+  },
+  "services": { "sync_wake_words": { "service": "mdi:sync" } }
+}

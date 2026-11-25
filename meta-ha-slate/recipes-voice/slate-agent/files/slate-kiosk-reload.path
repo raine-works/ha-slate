@@ -1,0 +1,13 @@
+# Home Assistant changed the dashboard URL (slate-agent rewrote kiosk.env)
+# or pressed "Reload dashboard": restart the browser. The agent itself has no
+# privileges; this unit is the narrow bridge.
+[Unit]
+Description=Restart the kiosk when Home Assistant asks
+
+[Path]
+PathChanged=/data/agent/kiosk.env
+PathModified=/run/slate-agent/reload-kiosk
+Unit=slate-kiosk-reload.service
+
+[Install]
+WantedBy=multi-user.target

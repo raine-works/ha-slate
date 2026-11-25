@@ -1,0 +1,87 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Add an HA Slate panel",
+        "description": "Enter the panel's address. Panels on the same network are discovered automatically.",
+        "data": { "host": "Host", "port": "Port" }
+      },
+      "zeroconf_confirm": {
+        "title": "HA Slate discovered",
+        "description": "Add {name} to Home Assistant?"
+      },
+      "pair": {
+        "title": "Pair with {name}",
+        "description": "Certificate fingerprint: {fingerprint}…\n\nIf the panel came with a pairing code label, enter it. Otherwise leave it empty: a new or factory-reset panel accepts pairing for 15 minutes after power-on.",
+        "data": { "pairing_code": "Pairing code" }
+      },
+      "reauth_confirm": {
+        "title": "Re-pair the panel",
+        "description": "The panel no longer accepts Home Assistant's credentials (it was factory reset or its certificate changed). Power-cycle it and pair again."
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the panel.",
+      "invalid_code": "Wrong pairing code.",
+      "locked": "Too many wrong codes. Wait a minute and try again.",
+      "pairing_window_closed": "The pairing window has closed. Power-cycle the panel and try again within 15 minutes.",
+      "already_paired": "The panel is paired with another Home Assistant. Factory reset it first.",
+      "pairing_failed": "Pairing failed."
+    },
+    "abort": {
+      "already_configured": "This panel is already configured.",
+      "cannot_connect": "Cannot connect to the panel.",
+      "invalid_discovery": "Discovery data is incomplete.",
+      "reauth_successful": "Re-paired successfully.",
+      "wrong_device": "That address belongs to a different panel."
+    }
+  },
+  "entity": {
+    "assist_satellite": { "assist_satellite": { "name": "Assist satellite" } },
+    "button": {
+      "reboot": { "name": "Reboot" },
+      "reload_kiosk": { "name": "Reload dashboard" }
+    },
+    "event": {
+      "wake_word": {
+        "name": "Wake word",
+        "state_attributes": { "event_type": { "state": { "detected": "Detected" } } }
+      }
+    },
+    "light": {
+      "edge_light": { "name": "Edge light" },
+      "display": { "name": "Display" }
+    },
+    "number": { "volume": { "name": "Volume" } },
+    "select": {
+      "pipeline": {
+        "name": "Assistant",
+        "state": { "preferred": "Preferred" }
+      },
+      "vad_sensitivity": {
+        "name": "Finished speaking detection",
+        "state": { "default": "Default", "aggressive": "Aggressive", "relaxed": "Relaxed" }
+      },
+      "wake_word_sensitivity": {
+        "name": "Wake word sensitivity",
+        "state": { "default": "Default", "more_sensitive": "More sensitive", "less_sensitive": "Fewer false wakes" }
+      },
+      "wake_word_location": {
+        "name": "Wake word detection",
+        "state": { "device": "On the panel", "home_assistant": "In Home Assistant" }
+      }
+    },
+    "switch": {
+      "muted": { "name": "Mute microphone" },
+      "wake_sound": { "name": "Wake sound" }
+    },
+    "text": { "kiosk_url": { "name": "Dashboard URL" } }
+  },
+  "services": {
+    "sync_wake_words": {
+      "name": "Sync wake words",
+      "description": "Push the models in config/custom_wake_words to every HA Slate panel (and remove ones that were deleted)."
+    }
+  }
+}

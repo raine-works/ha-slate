@@ -1,4 +1,4 @@
-SUMMARY = "HA Slate: PipeWire audio + Linux Voice Assistant satellite"
+SUMMARY = "HA Slate: PipeWire audio + slate-agent voice satellite"
 LICENSE = "MIT"
 PACKAGE_ARCH = "${MACHINE_ARCH}"
 
@@ -6,5 +6,5 @@ inherit packagegroup
 
 RDEPENDS:${PN} = " \
     slate-audio \
-    linux-voice-assistant \
+    slate-agent \
 "

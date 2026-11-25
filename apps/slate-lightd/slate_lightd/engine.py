@@ -113,5 +113,5 @@ class Engine:
             self._wake.clear()
             try:
                 await asyncio.wait_for(self._wake.wait(), self.period if animated else 1.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass

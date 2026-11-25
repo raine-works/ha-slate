@@ -1,0 +1,6 @@
+[Unit]
+Description=Restart the kiosk browser
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart slate-kiosk.service

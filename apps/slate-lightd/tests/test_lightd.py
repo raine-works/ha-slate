@@ -10,7 +10,8 @@ from slate_lightd.backends.sysfs import SysfsLedBackend
 from slate_lightd.backends.ws2812_spi import RESET_BYTES, encode
 from slate_lightd.effects import EFFECTS
 from slate_lightd.engine import Engine
-from slate_lightd.lva import EDGE_ID, VoiceBridge, run_client
+from slate_lightd.bridge import VoiceBridge
+from slate_lightd.control import LightController
 from slate_lightd.power import PowerBudget
 
 
@@ -87,8 +88,7 @@ def test_ttl_expiry():
 
 def test_voice_pipeline_sequence():
     e = make_engine()
-    user = []
-    br = VoiceBridge(e, (0.0, 0.4, 1.0), user.append)
+    br = VoiceBridge(e, (0.0, 0.4, 1.0))
     br.handle({"event": "snapshot", "data": {"muted": False, "ha_connected": True}})
     assert e.active() is None
     br.handle({"event": "wake_word_detected", "data": {"wake_word_id": "x", "slot": 0, "score": 0.9}})
@@ -97,13 +97,11 @@ def test_voice_pipeline_sequence():
     assert e.active().effect == "scan"
     br.handle({"event": "pipeline_error", "data": {"reason": "stt"}})
     assert e.active().source == "error"
-    br.handle({"event": "light_command", "data": {"object_id": EDGE_ID, "state": True}})
-    assert user and user[0]["object_id"] == EDGE_ID
 
 
 def test_muted_and_disconnect():
     e = make_engine()
-    br = VoiceBridge(e, (0.0, 0.4, 1.0), lambda d: None)
+    br = VoiceBridge(e, (0.0, 0.4, 1.0))
     br.handle({"event": "muted", "data": {"muted": True}})
     assert e.active().source == "muted"
     br.handle({"event": "disconnected"})
@@ -116,7 +114,7 @@ def test_muted_and_disconnect():
 
 def test_timer_countdown_then_ring_then_idle():
     e = make_engine()
-    br = VoiceBridge(e, (0.0, 0.4, 1.0), lambda d: None)
+    br = VoiceBridge(e, (0.0, 0.4, 1.0))
     br.handle({"event": "timer_ticking", "data": {"id": "t1", "name": "", "total_seconds": 60, "seconds_left": 30}})
     c = e.active()
     assert c.source == "timer" and c.value == pytest.approx(0.5, abs=0.01)
@@ -130,11 +128,11 @@ def test_timer_countdown_then_ring_then_idle():
 
 def test_user_light_mapping():
     e = make_engine()
-    br = VoiceBridge(e, (0.0, 0.4, 1.0), lambda d: None)
-    br.apply_user_light({"object_id": EDGE_ID, "state": True, "brightness": 0.5, "red": 1.0, "green": 0.0, "blue": 0.0, "effect": "Breathe"})
+    br = VoiceBridge(e, (0.0, 0.4, 1.0))
+    br.apply_user_light({"state": True, "brightness": 0.5, "red": 1.0, "green": 0.0, "blue": 0.0, "effect": "Breathe"})
     c = e.active()
     assert (c.effect, c.brightness, c.color) == ("breathe", 0.5, (1.0, 0.0, 0.0))
-    br.apply_user_light({"object_id": EDGE_ID, "state": False})
+    br.apply_user_light({"state": False})
     assert e.active() is None
 
 
@@ -175,30 +173,48 @@ def test_control_socket_roundtrip(tmp_path):
     assert status["mode"] == "0o660"
 
 
-def test_lva_client_registers_and_maps_events():
-    websockets = pytest.importorskip("websockets")
+class FakeBacklight:
+    def __init__(self):
+        self.applied = []
 
-    async def go():
-        received = []
-        e = make_engine()
-        br = VoiceBridge(e, (0.0, 0.4, 1.0), lambda d: None, on_display=lambda d: None)
+    def apply(self, data):
+        self.applied.append(dict(data))
 
-        async def fake_lva(ws, *args):
-            await ws.send(json.dumps({"event": "snapshot", "data": {"muted": False, "ha_connected": True}}))
-            for _ in range(2):
-                received.append(json.loads(await ws.recv()))
-            await ws.send(json.dumps({"event": "listening"}))
-            await asyncio.sleep(0.2)
 
-        async with websockets.serve(fake_lva, "127.0.0.1", 0) as srv:
-            port = srv.sockets[0].getsockname()[1]
-            task = asyncio.create_task(run_client(f"ws://127.0.0.1:{port}", br))
-            await asyncio.sleep(0.15)
-            active = e.active()
-            task.cancel()
-        return received, active
+def test_controller_lights_and_persistence():
+    e = make_engine()
+    saved = []
+    bl = FakeBacklight()
+    ctl = LightController(e, VoiceBridge(e, (0.0, 0.4, 1.0)), bl, {}, lambda st: saved.append(json.loads(json.dumps(st))))
+    assert e.active() is None  # default edge state is off
+    resp = control.apply(e, {"light": {"target": "edge", "state": True, "red": 1.0, "green": 0.0, "blue": 0.0,
+                                       "brightness": 0.5, "effect": "Scan"}}, ctl)
+    assert resp["state"]["effect"] == "Scan"
+    assert (e.active().source, e.active().effect) == ("user", "scan")
+    control.apply(e, {"light": {"target": "display", "brightness": 0.3}}, ctl)
+    assert bl.applied[-1] == {"state": True, "brightness": 0.3}
+    assert saved[-1]["edge"]["state"] is True and saved[-1]["display"]["brightness"] == 0.3
+    status = control.apply(e, {"status": True}, ctl)
+    assert set(status["lights"]) == {"edge", "display"}
+    # Voice events override the user light, then reveal it again.
+    control.apply(e, {"voice_event": {"event": "thinking"}}, ctl)
+    assert e.active().source == "voice"
+    control.apply(e, {"voice_event": {"event": "idle"}}, ctl)
+    assert e.active().source == "user"
 
-    received, active = asyncio.run(go())
-    assert [r["data"]["object_id"] for r in received] == ["edge_light", "display"]
-    assert all(r["command"] == "register_light" for r in received)
-    assert active.source == "voice" and active.effect == "solid"
+
+def test_controller_restores_persisted_state():
+    e = make_engine()
+    bl = FakeBacklight()
+    LightController(e, VoiceBridge(e, (0.0, 0.4, 1.0)), bl,
+                    {"edge": {"state": True, "effect": "Pulse", "brightness": 1.0, "red": 0, "green": 1, "blue": 0},
+                     "display": {"state": True, "brightness": 0.2}}, lambda st: None)
+    assert e.active().effect == "pulse"
+    assert bl.applied == [{"state": True, "brightness": 0.2}]
+
+
+def test_controller_rejects_bad_target():
+    e = make_engine()
+    ctl = LightController(e, VoiceBridge(e, (0.0, 0.4, 1.0)), None, {}, lambda st: None)
+    with pytest.raises(ValueError):
+        control.apply(e, {"light": {"target": "display", "brightness": 0.3}}, ctl)

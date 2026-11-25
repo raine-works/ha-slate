@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "slate-agent"
+version = "0.1.0"
+description = "HA Slate device agent: voice satellite, wake words and device control for Home Assistant"
+license = {text = "MIT"}
+requires-python = ">=3.12"
+dependencies = [
+    "websockets>=12",
+    "zeroconf>=0.130",
+    "pymicro-wakeword>=2.5,<3",
+    "pyopen-wakeword>=1.1,<2",
+]
+
+[project.scripts]
+slate-agent = "slate_agent.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["slate_agent", "slate_agent.*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

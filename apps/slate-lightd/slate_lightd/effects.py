@@ -10,7 +10,7 @@ animation to leak state between voice-pipeline phases.
 from __future__ import annotations
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 from .color import BLACK, RGB, Frame, clamp, scale
 

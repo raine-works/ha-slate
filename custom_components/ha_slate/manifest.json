@@ -1,0 +1,14 @@
+{
+  "domain": "ha_slate",
+  "name": "HA Slate",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["assist_pipeline", "assist_satellite", "ffmpeg", "intent", "tts"],
+  "documentation": "https://github.com/raine-works/ha-slate/blob/main/docs/SPEC.md",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/raine-works/ha-slate/issues",
+  "requirements": [],
+  "version": "0.1.0",
+  "zeroconf": ["_ha-slate._tcp.local."]
+}

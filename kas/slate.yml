@@ -44,6 +44,6 @@ local_conf_header:
     BB_GENERATE_MIRROR_TARBALLS = "1"
     # Remove work dirs after each recipe to fit CI disks (WPE is large).
     INHERIT += "rm_work"
-    RM_WORK_EXCLUDE += "slate-lightd slate-kiosk linux-voice-assistant"
+    RM_WORK_EXCLUDE += "slate-lightd slate-kiosk slate-agent"
     # Fail on QA issues instead of warning about them.
     ERROR_QA:append = " version-going-backwards"

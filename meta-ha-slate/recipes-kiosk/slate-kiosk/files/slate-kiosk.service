@@ -17,6 +17,8 @@ Group=kiosk
 SupplementaryGroups=wayland render video
 EnvironmentFile=/etc/slate/kiosk.env
 EnvironmentFile=-/data/slate/kiosk.env
+# Highest precedence: the "Dashboard URL" entity in Home Assistant.
+EnvironmentFile=-/data/agent/kiosk.env
 Environment=WAYLAND_DISPLAY=/run/wayland-0
 Environment=XDG_RUNTIME_DIR=/run/slate-kiosk
 # WebKit stores cookies + localStorage (HA auth tokens!) under XDG_DATA_HOME.

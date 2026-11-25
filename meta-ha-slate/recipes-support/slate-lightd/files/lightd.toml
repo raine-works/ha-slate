@@ -21,9 +21,6 @@ quiescent_ma_per_led = 1.0
 backlight = "auto"
 min_level = 0.05
 
-[lva]
-enabled = true
-url     = "ws://127.0.0.1:6055"
 
 [theme]
 accent = [0, 110, 255]

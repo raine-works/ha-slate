@@ -1,0 +1,6 @@
+[Unit]
+Description=Reboot requested by Home Assistant
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl reboot

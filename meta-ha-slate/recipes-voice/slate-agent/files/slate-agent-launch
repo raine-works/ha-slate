@@ -1,0 +1,11 @@
+#!/bin/sh
+# Start slate-agent with the private dependency prefix.
+set -eu
+export PYTHONPATH=@AGENT_SITE@
+exec /usr/bin/python3 -m slate_agent \
+    --state-dir /data/agent \
+    --capture-target "${SLATE_CAPTURE_TARGET:-aec_mic}" \
+    --playback-target "${SLATE_PLAYBACK_TARGET:-aec_sink}" \
+    --kiosk-env /data/agent/kiosk.env \
+    --runtime-dir /run/slate-agent \
+    "$@"

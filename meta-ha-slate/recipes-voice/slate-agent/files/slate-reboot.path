@@ -1,0 +1,9 @@
+[Unit]
+Description=Reboot when Home Assistant presses the panel's Reboot button
+
+[Path]
+PathModified=/run/slate-agent/reboot
+Unit=slate-reboot.service
+
+[Install]
+WantedBy=multi-user.target

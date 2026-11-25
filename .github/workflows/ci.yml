@@ -12,9 +12,35 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"   # matches Scarthgap's target CPython
-      - run: pip install "websockets==12.0" pytest
+      - run: pip install pytest
       - run: pytest -q
         working-directory: apps/slate-lightd
+
+  agent:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get install -y espeak-ng   # enables the real wake word detection test
+      - run: pip install -r requirements-target.txt pytest pytest-asyncio
+        working-directory: apps/slate-agent
+      - run: pytest -q
+        working-directory: apps/slate-agent
+
+  integration:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"   # Home Assistant's current requirement
+      - run: sudo apt-get install -y ffmpeg
+      - run: >
+          pip install pytest-homeassistant-custom-component "websockets==12.0"
+          hassil home-assistant-intents ha-ffmpeg mutagen pymicro-vad pyspeex-noise gazetteer-matcher
+      - run: pytest -q tests/ha_slate
 
   lint:
     runs-on: ubuntu-24.04
@@ -24,7 +50,7 @@ jobs:
       - run: >
           shellcheck -s sh
           meta-ha-slate/recipes-kiosk/slate-kiosk/files/slate-kiosk-launch
-          meta-ha-slate/recipes-voice/linux-voice-assistant/files/slate-voice-launch
+          meta-ha-slate/recipes-voice/slate-agent/files/slate-agent-launch
           meta-ha-slate/dynamic-layers/rauc/recipes-core/rauc/files/slate-rauc-hook
           scripts/gen-dev-keys.sh
       # Validates kas schema and that every pinned layer commit is fetchable.

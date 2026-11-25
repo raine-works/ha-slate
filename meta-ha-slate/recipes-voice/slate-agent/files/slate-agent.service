@@ -1,42 +1,44 @@
 [Unit]
-Description=HA Slate voice satellite (Linux Voice Assistant)
+Description=HA Slate agent (Home Assistant voice satellite + device control)
 Wants=network-online.target slate-lightd.service
 After=network-online.target slate-audio.target slate-lightd.service
 Requires=slate-audio.target
 RequiresMountsFor=/data
 
 [Service]
-Type=simple
-User=voice
-Group=voice
+Type=notify
+User=slate
+Group=slate
 SupplementaryGroups=audio pipewire
 EnvironmentFile=/etc/slate/slate.env
 EnvironmentFile=-/data/slate/slate.env
-EnvironmentFile=/etc/slate/voice.env
-EnvironmentFile=-/data/slate/voice.env
-Environment=PULSE_SERVER=unix:/run/pipewire-pulse/native
 Environment=PIPEWIRE_RUNTIME_DIR=/run/pipewire
-Environment=HOME=/data/voice
+Environment=HOME=/data/agent
 Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStart=@LIBEXECDIR@/slate-voice-launch
+Environment=PYTHONUNBUFFERED=1
+ExecStart=@LIBEXECDIR@/slate-agent-launch
 Restart=always
-RestartSec=3
+RestartSec=2
+# Trigger files watched by slate-kiosk-reload.path / slate-reboot.path.
+RuntimeDirectory=slate-agent
+RuntimeDirectoryMode=0750
 
-# Audio latency: modest RT priority for the capture/wake-word thread.
+# Audio capture + wake word inference must not starve behind the browser.
 Nice=-10
 IOSchedulingClass=realtime
-LimitRTPRIO=20
 
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=/data/voice
+ReadWritePaths=/data/agent
+ReadOnlyPaths=/boot
 ProtectHome=yes
 PrivateTmp=yes
+PrivateDevices=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
-MemoryMax=400M
+MemoryMax=300M
 
 [Install]
 WantedBy=multi-user.target

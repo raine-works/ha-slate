@@ -1,7 +1,7 @@
 SUMMARY = "HA Slate edge light bar + backlight daemon"
 DESCRIPTION = "Drives the integrated edge light bar (WS2812 over SPI or kernel LED-class \
-drivers) from voice-pipeline events and exposes it, and the display backlight, to \
-Home Assistant as light entities via the voice satellite's peripheral API."
+drivers) and the display backlight. slate-agent feeds it voice events and Home \
+Assistant light commands over a local control socket."
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
@@ -15,7 +15,11 @@ SRC_URI = " \
 "
 S = "${WORKDIR}/slate-lightd"
 
-inherit python_setuptools_build_meta systemd
+inherit python_setuptools_build_meta systemd useradd
+
+# Control-socket group shared with slate-agent.
+USERADD_PACKAGES = "${PN}"
+GROUPADD_PARAM:${PN} = "-r slate"
 
 SYSTEMD_SERVICE:${PN} = "slate-lightd.service"
 
@@ -37,5 +41,4 @@ RDEPENDS:${PN} = " \
     python3-json \
     python3-logging \
     python3-tomllib \
-    python3-websockets \
 "
