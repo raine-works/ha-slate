@@ -38,3 +38,8 @@ panel is discovered automatically. Custom wake words: put `<id>.json` + `<id>.tf
 `config/custom_wake_words/` folder (SPEC §8.6).
 
 Host requirements, flashing, and test instructions are in `docs/SPEC.md` §13.
+
+## Documentation
+
+The documentation index is [`docs/README.md`](docs/README.md); everything else is in
+[`docs/SPEC.md`](docs/SPEC.md).
