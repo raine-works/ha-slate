@@ -11,7 +11,7 @@ waveform:
 These timings satisfy both the original WS2812B datasheet and the WS2812B-V5 /
 SK6812 tables. A trailing run of zero bytes (>= 300 us low) latches the frame.
 
-Hardware requirements (see docs/SPEC.md "Edge lighting"):
+Hardware requirements (see docs/spec.md "Edge lighting"):
   * MOSI must idle LOW between transfers (true for most controllers in mode 0).
   * 3.3 V -> 5 V level shifter (74AHCT1G125 or similar) on the data line.
   * spidev.bufsiz >= led_count * 12 + 128 bytes.
