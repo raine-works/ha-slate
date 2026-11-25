@@ -13,6 +13,8 @@ SRC_URI += " \
 "
 
 do_install:append() {
+    # Per-hardware compatible string: RAUC refuses bundles built for another board.
+    sed -i -e 's,@SLATE_RAUC_COMPATIBLE@,${SLATE_RAUC_COMPATIBLE},' ${D}${sysconfdir}/rauc/system.conf
     install -D -m 0755 ${WORKDIR}/slate-rauc-hook ${D}${libexecdir}/slate-rauc-hook
     install -D -m 0644 ${WORKDIR}/10-slate-mark-good.conf \
         ${D}${sysconfdir}/systemd/system/rauc-mark-good.service.d/10-slate.conf

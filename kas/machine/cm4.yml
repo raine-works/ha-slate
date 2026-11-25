@@ -33,3 +33,4 @@ local_conf_header:
     # Kernel cmdline: rootfs comes from boot.scr (slot selection), not here.
     CMDLINE_ROOTFS = ""
     SERIAL_CONSOLES = "115200;ttyS0"
+    SLATE_RAUC_COMPATIBLE = "ha-slate-cm4"

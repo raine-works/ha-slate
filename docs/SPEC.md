@@ -16,8 +16,8 @@ hardware-specific choice is isolated in a BSP glue layer or kas file so you can 
 
 | # | Assumption | Where it lives | If it's wrong |
 |---|---|---|---|
-| A1 | Reference SoM: **Raspberry Pi CM4** (BCM2711, 4× A72, 2–4 GB, eMMC) on a custom PoE carrier | `kas/machine/cm4.yml`, `meta-ha-slate/dynamic-layers/raspberrypi/` | Add a new `kas/machine/<board>.yml` and a `dynamic-layers/<bsp>/` dir (§3.2) |
-| A2 | Display: 7–10" MIPI-DSI panel, PWM backlight, I2C capacitive touch (Goodix / FocalTech / Ilitek) | DT overlay in `RPI_EXTRA_CONFIG`; kernel `slate-display.cfg` | Change the panel/bridge drivers in the fragment |
+| A1 | SoM: **Raspberry Pi CM4** (BCM2711, 4× A72, eMMC) or **CM5** (BCM2712, 4× A76, eMMC, §3.4) on a custom PoE carrier | `kas/machine/cm4.yml`, `kas/machine/cm5.yml`, `meta-ha-slate/dynamic-layers/raspberrypi/` | Add a new `kas/machine/<board>.yml` and a `dynamic-layers/<bsp>/` dir (§3.2) |
+| A2 | Display: MIPI-DSI panel with capacitive touch. CM4: 7" Touch Display 2 class (2-lane). CM5: **Touch Display 2, 10.1"** (1200×1920, 4-lane, 10-point touch) | DT overlay in `RPI_EXTRA_CONFIG`; kernel `slate-display.cfg` / `slate-bcm2712.cfg` | Change the panel/bridge drivers in the fragment |
 | A3 | Audio: I2S MEMS mics, or a USB/XMOS mic array, plus an I2S class-D amp (MAX98357A class) | `slate-audio.cfg`, `slate-audio` recipe | Only the PipeWire node names change |
 | A4 | Edge bar: **48 × WS2812B/SK6812** on SPI0 MOSI at 5 V; an I2C LP50xx variant is also supported | `lightd.toml`, `slate-leds.cfg` | Pick the `sysfs` backend (§9.2) |
 | A5 | Power: IEEE 802.3at (Type 2, 25.5 W) PD; must degrade gracefully on 802.3af (12.95 W) | `[power]` in `lightd.toml` | See the power budget (§3.3) |
@@ -126,7 +126,7 @@ Weston and WebKit get GL ES 3.x without vendor blobs. Voice needs about 1 A-clas
 | Candidate | GPU (Mesa) | Yocto BSP | Notes |
 |---|---|---|---|
 | **RPi CM4** (BCM2711) | V3D 4.2 (`v3d`/`vc4`) | `meta-raspberrypi` (very active) | Reference. Mature DSI stack, rpiboot eMMC flashing, huge ecosystem |
-| RPi CM5 (BCM2712) | V3D 7.1 | `meta-raspberrypi` (`raspberrypi5`) | About 2–3× CPU. Higher power draw: needs 802.3at |
+| **RPi CM5** (BCM2712) | V3D 7.1 | `meta-raspberrypi` (`raspberrypi-cm5-io-board`) | **Supported** (`kas/machine/cm5.yml`, §3.4). About 2–3× CPU and 4-lane DSI for the 10.1" panel. Higher power draw |
 | Rockchip RK3566/RK3568 | Mali-G52 (`panfrost`) | `meta-rockchip` (mainline kernel) | Cheapest. Mainline DSI/audio quality varies by board |
 | NXP i.MX 8M Mini/Plus | GC7000 (`etnaviv`) | `meta-freescale` | Industrial temperature range, long-term supply. 8M Plus adds an NPU |
 
@@ -140,8 +140,13 @@ The product layer never refers to a SoC directly. Board specifics live in three 
 1. `kas/machine/<board>.yml`: `MACHINE`, BSP layer pin, boot config, `WKS_FILE`, `IMAGE_FSTYPES`.
 2. `meta-ha-slate/dynamic-layers/<bsp-collection>/`: bbappends that are only parsed when that BSP
    layer is present (`BBFILES_DYNAMIC`). Examples are the SoC kernel fragment and the boot script.
-3. Runtime facts: `lightd.toml` (LED topology, power), `weston.ini` `[output]` (connector, rotation),
+3. Runtime facts: `lightd.toml` (LED topology, power), the display connector and rotation
+   (`SLATE_DISPLAY_OUTPUT` / `SLATE_DISPLAY_TRANSFORM`, which append a `weston.ini` `[output]`), the
+   RAUC compatible string (`SLATE_RAUC_COMPATIBLE`, so a bundle for one board is refused by another),
    and the PipeWire AEC node binding.
+
+SoC-specific kernel options are split per BSP machine override: `slate-bcm2711.cfg` for
+`raspberrypi4-64` (CM4) and `slate-bcm2712.cfg` for `raspberrypi5` (CM5).
 
 ### 3.3 Power budget
 
@@ -162,6 +167,29 @@ efficiency to the 5 V rail.
 or equivalent) to a GPIO so firmware can drop `max_current_ma` to about 200 mA and cap the backlight
 at 70 % when only 802.3af is available. The limiter is implemented (`power.py`). Reading the GPIO and
 switching profiles is roadmap item R3.
+
+### 3.4 Compute Module 5 + Touch Display 2 (10.1")
+
+Build with `kas build kas/machine/cm5.yml`. The product software (agent, integration, lightd, kiosk)
+is identical across boards; only the following differ.
+
+| Topic | CM5 specifics | Verified how |
+|---|---|---|
+| Panel | Touch Display 2 10.1": 1200×1920 portrait, **4-lane DSI** (not usable on CM4/Pi 4), 10-point capacitive touch | Raspberry Pi product brief and docs |
+| Kernel | **linux-raspberrypi 6.12** (`PREFERRED_VERSION_linux-raspberrypi = "6.12.%"`). The BSP default 6.6 lacks the panel driver | The 6.12.93 commit pinned by meta-raspberrypi contains `panel-ilitek-ili79600a.c` and the overlay; rpi-6.6.y has neither |
+| Drivers | `DRM_PANEL_ILITEK_IL79600A` (sic), `TOUCHSCREEN_ILITEK_V3`, `REGULATOR_RASPBERRYPI_TOUCHSCREEN_V2`, plus RP1 (`MFD_RP1`, `MACB`, `SPI_DW_MMIO`, `PWM_RP1`) in `slate-bcm2712.cfg` | All present and enabled in the pinned `bcm2712_defconfig` |
+| Boot config | `dtoverlay=vc4-kms-dsi-ili79600-10-1inch` (port DSI1; append `,dsi0` for port 0). Compute Modules don't auto-detect the panel | Overlay README in the pinned kernel |
+| Rotation | In the compositor only (`SLATE_DISPLAY_TRANSFORM`, default `rotate-90` for landscape). Weston maps touch through the same transform. Do **not** also use the overlay's `rotation=`, or touch is rotated twice | Weston behaviour |
+| Multi-touch | Kernel MT → libinput → Weston → Cog (tracks 10 touch points) → WebKit touch events → dashboard | Cog 0.18 Wayland backend source |
+| U-Boot | **v2026.10** recipe in `dynamic-layers/raspberrypi/recipes-bsp/u-boot/` (`DEFAULT_PREFERENCE = -1`, selected only by `cm5.yml`). poky's 2024.01 has no BCM2712 support (added in v2024.04). meta-raspberrypi's `fdt_addr` patch is already upstream in v2026.10 and is removed from `SRC_URI`. Fetched from branch **`main`**: U-Boot froze `master` at v2026.07 | Searched U-Boot sources at both tags. The patch reverse-applies on v2026.10. BitBake fetch + unpack of v2026.10 succeeds |
+| Page size | The Pi 5 kernel uses **16K pages**. All 166 loadable segments in slate-agent's prebuilt libraries (TFLite, numpy/OpenBLAS, feature extractor) are 64K-aligned, so they load | `readelf` on every `.so` in the wheel set |
+| Edge bar SPI | SPI is on RP1 (DesignWare). 3.2 MHz may round to about 3.1 MHz, which is still inside WS2812B timing. Confirm on a scope | Bring-up checklist |
+| Power | CM5 under load plus a 10" backlight puts the peak close to the 802.3at limit (§3.3). Measure early. If needed, cap the bar and backlight harder, or design the carrier for 802.3bt | Estimate, needs measurement |
+| RAUC | `compatible=ha-slate-cm5`. CM4 and CM5 bundles are mutually exclusive | `bitbake -e` |
+
+**Production boot option:** the Raspberry Pi bootloader has native A/B "tryboot" (`autoboot.txt`). On CM5
+it can replace U-Boot entirely: faster boot, one less component to maintain. It needs two boot partitions
+and a small RAUC `custom` bootloader backend script (roadmap R14).
 
 ---
 
@@ -230,7 +258,8 @@ meta-ha-slate/
 ├── recipes-kernel/linux/          # config fragments + linux-yocto bbappend
 ├── wic/slate-rpi-ab.wks.in        # boot | rootfs_a | rootfs_b | data
 └── dynamic-layers/
-    ├── raspberrypi/               # SoC fragment, A/B boot.scr
+    ├── raspberrypi/               # SoC fragments (bcm2711/bcm2712), A/B boot.scr,
+    │                              # U-Boot 2026.10 for CM5
     └── rauc/                      # system.conf, fw_env.config, hooks, mark-good gate, bundle
 ```
 
@@ -256,6 +285,7 @@ kas/slate.yml               base: distro, target, pinned repos, cache dirs
 kas/feature/rauc.yml        + meta-rauc, DISTRO_FEATURES rauc, ext4 slot image
 kas/machine/qemuarm64.yml   = slate.yml (+ console LED preview)
 kas/machine/cm4.yml         = slate.yml + rauc.yml + meta-raspberrypi + boot config
+kas/machine/cm5.yml         = same, CM5 machine, kernel 6.12, U-Boot 2026.10, 10.1" panel
 ```
 
 ### 5.4 Distro policy (`slate.conf`) highlights
@@ -307,7 +337,8 @@ BSP's Kconfig doesn't accept. Treat those warnings as errors in CI.
 | `slate-leds.cfg` | `SPI`, `SPI_SPIDEV` | WS2812 bar driven over SPI MOSI (§9) |
 | | `LEDS_CLASS(_MULTICOLOR)`, `LEDS_LP50XX`, `LEDS_IS31FL32XX`, `LEDS_PCA963X`, `LEDS_PWM`, `LEDS_TRIGGER_PATTERN` | I2C constant-current alternative. The kernel owns the current limits |
 | `slate-hardening.cfg` | `DEVMEM`, `MAGIC_SYSRQ`, `KEXEC`, `BT` **off**; `STRICT_KERNEL_RWX`, `HARDENED_USERCOPY`, `FORTIFY_SOURCE`, `STACKPROTECTOR_STRONG` **on** | Network-facing appliance on a wall |
-| `slate-rpi.cfg` (BSP) | `DRM_VC4`, `DRM_V3D`, `BCM2835_WDT`, `SPI_BCM2835`, `PWM_BCM2835`, `SND_BCM2835_SOC_I2S`, `BCMGENET` | SoC drivers for CM4 |
+| `slate-bcm2711.cfg` (CM4) | `DRM_VC4`, `DRM_V3D`, `BCM2835_WDT`, `SPI_BCM2835`, `PWM_BCM2835`, `SND_BCM2835_SOC_I2S`, `BCMGENET` | SoC drivers for CM4 |
+| `slate-bcm2712.cfg` (CM5) | `DRM_PANEL_ILITEK_IL79600A`, `TOUCHSCREEN_ILITEK_V3`, `REGULATOR_RASPBERRYPI_TOUCHSCREEN_V2`, `MFD_RP1`, `MACB`, `SPI_DW_MMIO`, `PWM_RP1`, `SND_DESIGNWARE_I2S`, `ARM64_16K_PAGES` | SoC and 10.1" panel drivers for CM5 (§3.4) |
 
 **Command line** (built by `boot.scr`): `root=/dev/mmcblk0p<slot> rootfstype=ext4 rootwait ro
 rauc.slot=<A|B> quiet`. Add `spidev.bufsiz=8192` if the bar has more than ~330 LEDs (12 bytes/LED + 128
@@ -334,7 +365,8 @@ and the PD Type-2 GPIO as a `gpio-line-names` entry.
 * `idle-time=0`. Blanking is controlled by HA through the Display light entity (`slate-lightd`). If
   you prefer Weston's own DPMS-on-idle (with touch to wake), set `idle-time=300` and verify that the
   waking touch is not delivered to the dashboard as a click.
-* Rotation goes in `[output] transform=` (compositor-side, zero cost), never in CSS.
+* Rotation goes in `[output] transform=` (compositor-side, zero cost), never in CSS. It is set per board
+  through `SLATE_DISPLAY_OUTPUT` / `SLATE_DISPLAY_TRANSFORM`.
 
 Weston runs through poky's `weston-init`: a system unit (`User=weston`, `PAMName=weston-autologin`,
 so logind gives it a seat) and a `weston.socket` at `/run/wayland-0` (group `wayland`, 0775). The
@@ -682,6 +714,9 @@ they change rarely, and a future RAUC `boot` slot of type `vfat` can cover them.
 4. If the new slot crashes, hangs (the hardware watchdog forces a reboot) or never becomes healthy,
    its counter reaches 0 and U-Boot falls back to the old slot (F7).
 
+The same `boot.scr` serves CM4 (U-Boot 2024.01) and CM5 (U-Boot 2026.10). Both keep the environment
+in `/boot/uboot.env` (16 KiB), which matches the BSP's `fw_env.config`.
+
 The edge bar shows "updating" (white scan) and "installed" (green) through the RAUC handlers.
 
 ### 10.3 Signing and PKI
@@ -757,16 +792,21 @@ kas shell kas/machine/qemuarm64.yml -c "runqemu slirp gl sdl"
 kas build kas/machine/cm4.yml                 # → slate-image-raspberrypi4-64.rootfs.wic.bz2
 kas build kas/machine/cm4.yml --target slate-image-dev
 kas build kas/machine/cm4.yml --target slate-bundle      # → .raucb update bundle
+
+# CM5 + 10.1" Touch Display 2 (§3.4)
+kas build kas/machine/cm5.yml                 # → slate-image-raspberrypi-cm5-io-board.rootfs.wic.bz2
+kas build kas/machine/cm5.yml --target slate-bundle
 ```
 
 Artifacts: `build/tmp/deploy/images/<machine>/`. The SBOM is in `build/tmp/deploy/spdx/`.
 
-### 13.3 Flash a CM4 (eMMC)
+### 13.3 Flash a CM4 / CM5 (eMMC)
 
 ```sh
-# Carrier: set nRPIBOOT jumper, connect USB-C slave port
-sudo rpiboot                                  # from raspberrypi/usbboot; eMMC appears as /dev/sdX
-sudo bmaptool copy build/tmp/deploy/images/raspberrypi4-64/slate-image-raspberrypi4-64.rootfs.wic.bz2 /dev/sdX
+# Carrier: set the nRPIBOOT jumper (CM5 IO Board: "disable eMMC boot"), connect the USB-C port
+sudo rpiboot                                  # CM4; from raspberrypi/usbboot. eMMC appears as /dev/sdX
+sudo rpiboot -d mass-storage-gadget64         # CM5 (see Raspberry Pi's CM5 flashing docs)
+sudo bmaptool copy build/tmp/deploy/images/<machine>/slate-image-<machine>.rootfs.wic.bz2 /dev/sdX
 # remove jumper, power over PoE
 ```
 
@@ -881,17 +921,25 @@ uv venv -p 3.14 .ha && uv pip install -p .ha/bin/python pytest-homeassistant-cus
   * The only error in these runs is the sandbox blocking the `uninative` tarball download, not the
     configuration. An earlier dry run caught one real bug (mpv not building `libmpv`), which the
     move to slate-agent has since made moot.
+* **CM5 (`kas/machine/cm5.yml`):** 2900 recipes parse, and `bitbake -n slate-image slate-bundle`
+  resolves (7,644 tasks). `bitbake -e` confirms kernel `6.12.93`, U-Boot `2026.10`, RAUC compatible
+  `ha-slate-cm5`, and the Weston `[output]` (`DSI-1`, `rotate-90`). `bitbake -c unpack u-boot` succeeds
+  with only `fw_env.config` left in `SRC_URI`. CM4 is unchanged (U-Boot 2024.01, `ha-slate-cm4`, graph
+  resolves). Validation caught two real bugs, both fixed: U-Boot v2026.10 is only on branch `main`, and
+  a duplicate `/etc/fw_env.config` would have collided with the BSP's `u-boot-env`.
 * Shell scripts pass `shellcheck`. Unit files pass `systemd-analyze verify` with no unknown keys.
 
 **Not yet run.** No full image compile (it needs a build host, §13.1), so compile-time and
-`do_package_qa` issues are still possible. The first suspect is the `INSANE_SKIP` list on the wheel-based
-`slate-agent` recipe. Nothing has run on panel hardware.
+`do_package_qa` issues are still possible. The first suspects are the `INSANE_SKIP` list on the
+wheel-based `slate-agent` recipe and compiling U-Boot 2026.10 with scarthgap's toolchain and host
+tools (`do_patch`/`do_compile` couldn't run in the validation sandbox, which blocks GNU mirrors). Nothing has run on panel hardware.
 
 **Bring-up checklist (in order):**
 
 - [ ] Full build for `qemuarm64`. Boot with `runqemu`, confirm Weston + Cog render HA, the lightd console
   preview, and the `/data` tmpfs fallback
 - [ ] CM4 build + flash. Confirm the A/B `boot.scr` picks slot A, `rauc status` is sane, and `fw_printenv` works
+- [ ] CM5: U-Boot 2026.10 boots from eMMC as `mmc 0`, Linux sees it as `mmcblk0` (`boot.scr` assumes both). Weston drives the panel on `DSI-1` (else set `SLATE_DISPLAY_OUTPUT`). Touch follows the rotation, all 10 points register (`evtest`), pinch works in the dashboard
 - [ ] Panel: DSI overlay, backlight under `/sys/class/backlight`, touch mapped to the output, rotation
 - [ ] Weston 13 accepts `require-outputs=any` with a late DSI bridge
 - [ ] WirePlumber system mode: the ALSA nodes appear with `support.logind = disabled` (`pw-cli ls Node`)
@@ -923,3 +971,4 @@ uv venv -p 3.14 .ha && uv pip install -p .ha/bin/python pytest-homeassistant-cus
 | R11 | `update` entity: firmware version and one-click install via RAUC, driven by the integration |
 | R12 | Wake word training helper: record positive samples on the panel itself to improve a custom model for the room |
 | R13 | Optional MQTT bridge for non-HA consumers (light bar, sensors). Never for voice |
+| R14 | CM5: replace U-Boot with the Raspberry Pi bootloader's `tryboot` A/B (two boot partitions, RAUC `custom` backend) |

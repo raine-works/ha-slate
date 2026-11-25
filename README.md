@@ -15,7 +15,7 @@ configuration, the voice and lighting design, partitioning and updates, and the 
 | Path | What |
 |---|---|
 | `docs/SPEC.md` | Technical specification and build guide |
-| `kas/` | Build configurations: `machine/qemuarm64.yml` (dev/CI), `machine/cm4.yml` (reference HW) |
+| `kas/` | Build configurations: `machine/qemuarm64.yml` (dev/CI), `machine/cm4.yml`, `machine/cm5.yml` (CM5 + 10.1" Touch Display 2) |
 | `meta-ha-slate/` | Product Yocto layer: distro, images, services, kernel fragments, A/B boot |
 | `custom_components/ha_slate/` | Home Assistant integration (HACS-installable; HA ≥ 2026.10) |
 | `apps/slate-agent/` | On-device agent: TLS link to HA, wake word engine + custom models, voice turns |
