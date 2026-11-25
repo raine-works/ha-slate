@@ -33,7 +33,9 @@ class Settings:
         """Validate and apply a partial update; return what actually changed.
 
         Raises ``ValueError`` for an unknown key or an invalid value; keys before
-        the bad one have already been applied. Volume is clamped to 0–1.
+        the bad one have already been applied. Raises ``TypeError`` for a value of
+        the wrong type (a non-number volume, a non-iterable wake word list). Volume
+        is clamped to 0–1.
         """
         known = {f.name for f in fields(self)}
         applied: dict[str, Any] = {}
@@ -76,7 +78,8 @@ class SettingsStore:
 
         A missing file gives the defaults; one that can't be read, isn't JSON, or
         holds an invalid value is logged, keeping the settings applied before the
-        error.
+        error. Raises ``AttributeError`` for JSON that isn't an object, and
+        ``TypeError`` for a value of the wrong type (e.g. ``"volume": null``).
         """
         s = Settings()
         try:
