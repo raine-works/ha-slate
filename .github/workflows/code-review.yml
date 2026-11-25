@@ -1,0 +1,30 @@
+# Claude reviews every pull request against the rules, and answers replies to its comments. The workflow is Raineworks', in
+# raine-works/agents (.github/workflows/code-review.yml): this file only calls it, and comes from the raineworks-base skill's
+# templates/workflows/code-review.yml. Change the workflow there, for every repository at once; here, only its inputs
+# (with:). The Base rules check moves the pin when the shared workflows change.
+name: Code review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+  actions: read
+
+jobs:
+  code-review:
+    name: Code review
+    uses: raine-works/agents/.github/workflows/code-review.yml@8d50b54592ee925341854a8a0aa2130336a1c416 # raine-works/agents master
+    secrets: inherit
+    with:
+      focus: |
+        - the panel's security posture (docs/SPEC.md §1.2 N4-N5, §12): read-only root, writes only under /data, nothing listening but the agent's TLS port and mDNS, no SSH outside slate-image-dev, confined unprivileged services; pairing, TLS pinning and token checks in the agent and the integration
+        - Slate Link protocol changes that are incompatible without a PROTOCOL_VERSION bump, on either side
+        - Home Assistant rules in custom_components/ha_slate: no blocking I/O in the event loop, manifest version bumped for a release
+        - the agent and lightd staying on Python 3.12 (Scarthgap's CPython); board-specific choices kept in kas/machine and meta-ha-slate/dynamic-layers
+        - agent pin changes in requirements-target.txt without the regenerated slate-agent-wheels.inc
