@@ -12,7 +12,7 @@ not here. Where this file is more specific, it wins.
 
 Firmware and Home Assistant integration for HA Slate, a PoE-powered wall touch panel: a Yocto (Scarthgap LTS) image
 driven by kas, two on-device Python daemons, and the `ha_slate` custom integration. The design, the build guide and
-the reasons behind both are in [`docs/SPEC.md`](docs/SPEC.md); read the section you're changing first.
+the reasons behind both are in [`docs/spec.md`](docs/spec.md); read the section you're changing first.
 
 ### Layout
 
