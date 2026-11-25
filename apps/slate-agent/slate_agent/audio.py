@@ -24,23 +24,47 @@ CHUNK_BYTES = CHUNK_SAMPLES * 2
 
 
 class AudioSource(Protocol):
-    def chunks(self) -> AsyncIterator[bytes]: ...
-    async def close(self) -> None: ...
+    """Microphone input: 16 kHz mono s16le in ``CHUNK_BYTES`` chunks."""
+
+    def chunks(self) -> AsyncIterator[bytes]:
+        """Yield chunks until the source ends or is closed."""
+        ...
+
+    async def close(self) -> None:
+        """Stop capturing; ``chunks`` then ends."""
+        ...
 
 
 class Player(Protocol):
-    async def start(self, rate: int, width: int, channels: int, volume: float) -> None: ...
-    async def write(self, pcm: bytes) -> None: ...
-    async def finish(self) -> None: ...   # drain, then return
-    async def abort(self) -> None: ...
+    """Speaker output for one stream at a time: ``start``, ``write`` PCM, then ``finish`` or ``abort``."""
+
+    async def start(self, rate: int, width: int, channels: int, volume: float) -> None:
+        """Begin a stream (``width`` in bytes per sample, ``volume`` 0–1), aborting any in progress."""
+        ...
+
+    async def write(self, pcm: bytes) -> None:
+        """Queue PCM for the current stream; dropped if none is open."""
+        ...
+
+    async def finish(self) -> None:
+        """End the stream and return once it has played out."""
+        ...
+
+    async def abort(self) -> None:
+        """Stop the stream at once, discarding what hasn't played."""
+        ...
 
 
 class PwCatSource:
+    """``AudioSource`` reading from a ``pw-cat --record`` subprocess."""
+
     def __init__(self, target: str | None) -> None:
+        """Capture from PipeWire node ``target``, or the default source if None."""
         self.target = target
         self.proc: asyncio.subprocess.Process | None = None
 
     async def chunks(self) -> AsyncIterator[bytes]:
+        """Start pw-cat and yield its chunks; ends (with a warning) when pw-cat exits, and stops it on exit."""
         args = ["pw-cat", "--record", "--rate", str(MIC_RATE), "--channels", "1",
                 "--format", "s16", "--latency", "20ms"]
         if self.target:
@@ -58,17 +82,22 @@ class PwCatSource:
             await self.close()
 
     async def close(self) -> None:
+        """Terminate pw-cat if it's running and wait for it to exit."""
         if self.proc and self.proc.returncode is None:
             self.proc.terminate()
             await self.proc.wait()
 
 
 class PwCatPlayer:
+    """``Player`` writing to a ``pw-cat --playback`` subprocess, one per stream."""
+
     def __init__(self, target: str | None) -> None:
+        """Play to PipeWire node ``target``, or the default sink if None."""
         self.target = target
         self.proc: asyncio.subprocess.Process | None = None
 
     async def start(self, rate: int, width: int, channels: int, volume: float) -> None:
+        """Start pw-cat for the stream; raises ``KeyError`` for a width other than 1, 2 or 4 bytes."""
         await self.abort()
         fmt = {1: "u8", 2: "s16", 4: "s32"}[width]
         args = ["pw-cat", "--playback", "--rate", str(rate), "--channels", str(channels),
@@ -79,11 +108,13 @@ class PwCatPlayer:
             *args, "-", stdin=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
 
     async def write(self, pcm: bytes) -> None:
+        """Write PCM to pw-cat, waiting while its pipe is full; dropped if no stream is open."""
         if self.proc and self.proc.stdin and not self.proc.stdin.is_closing():
             self.proc.stdin.write(pcm)
             await self.proc.stdin.drain()
 
     async def finish(self) -> None:
+        """Close pw-cat's input and wait for it to play out and exit."""
         if self.proc is None:
             return
         if self.proc.stdin and not self.proc.stdin.is_closing():
@@ -92,6 +123,7 @@ class PwCatPlayer:
         self.proc = None
 
     async def abort(self) -> None:
+        """Kill pw-cat, dropping what it hasn't played."""
         if self.proc and self.proc.returncode is None:
             self.proc.kill()
             await self.proc.wait()

@@ -44,10 +44,17 @@ class _Led:
 
 
 class SysfsLedBackend(Backend):
+    """The bar as a list of kernel LED-class devices, one per segment, in bar order."""
+
     def __init__(self, leds: list[str], root: str = "/sys/class/leds") -> None:
+        """Open each LED named in ``leds`` under ``root``.
+
+        Raises ``OSError`` if one is missing or its attributes can't be opened.
+        """
         self.leds = [_Led(os.path.join(root, name)) for name in leds]
         self.led_count = len(self.leds)
 
     def write(self, frame: list[tuple[int, int, int]]) -> None:
+        """Set each LED from ``frame`` (0–255 RGB), skipping unchanged ones; raises ``OSError`` on a failed write."""
         for led, rgb in zip(self.leds, frame):
             led.set(rgb)

@@ -88,6 +88,7 @@ class Pairing:
     """
 
     def __init__(self, token_file: Path, pairing_code_file: Path | None = None, window_s: float = PAIRING_WINDOW_S) -> None:
+        """Keep the token in ``token_file``; the pairing window opens now and lasts ``window_s`` seconds."""
         self.token_file = token_file
         self.code_file = pairing_code_file
         self.window_end = time.monotonic() + window_s
@@ -96,6 +97,7 @@ class Pairing:
 
     @property
     def token(self) -> str | None:
+        """The paired token, read from disk on each call; None if unpaired or unreadable."""
         try:
             return self.token_file.read_text().strip() or None
         except OSError:
@@ -103,6 +105,7 @@ class Pairing:
 
     @property
     def paired(self) -> bool:
+        """Whether a token is stored."""
         return self.token is not None
 
     def _code(self) -> str | None:
@@ -111,7 +114,15 @@ class Pairing:
         return None
 
     def try_pair(self, code: str | None, authenticated: bool = False) -> tuple[str | None, str | None]:
-        """Return (token, None) on success or (None, reason)."""
+        """Return (token, None) on success or (None, reason).
+
+        A success stores a new token (mode 0600), replacing any old one.
+        ``authenticated=True`` skips the code and window checks, for a client
+        that already proved the current token. Reasons: ``locked`` (after
+        ``MAX_FAILURES`` wrong codes, for ``LOCKOUT_S``), ``already_paired``,
+        ``invalid_code`` and ``pairing_window_closed``. Raises ``OSError`` if the
+        token can't be written.
+        """
         now = time.monotonic()
         if now < self._locked_until:
             return None, "locked"
@@ -134,6 +145,7 @@ class Pairing:
         return token, None
 
     def unpair(self) -> None:
+        """Forget the token; a no-op if unpaired. Without a pairing code, the window doesn't reopen until the agent restarts."""
         try:
             self.token_file.unlink()
         except FileNotFoundError:

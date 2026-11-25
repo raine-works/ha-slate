@@ -44,6 +44,7 @@ class SlateDevice:
     # -- lifecycle -------------------------------------------------------------
     @property
     def connected(self) -> bool:
+        """Whether the Slate Link connection is currently up."""
         return self.client is not None and self.client.connected
 
     async def async_connect_first(self) -> None:
@@ -53,6 +54,7 @@ class SlateDevice:
             self.hass, self._run(), f"ha_slate {self.device_id} connection")
 
     async def async_stop(self) -> None:
+        """Stop reconnecting and close the connection."""
         self._stopping = True
         if self._task:
             self._task.cancel()
@@ -119,6 +121,7 @@ class SlateDevice:
 
     @callback
     def async_add_listener(self, cb: Callable[[], None]) -> Callable[[], None]:
+        """Call ``cb`` on every state push and connect/disconnect; returns a function that removes it."""
         self._listeners.append(cb)
         return lambda: self._listeners.remove(cb)
 
@@ -135,21 +138,29 @@ class SlateDevice:
 
     @property
     def settings(self) -> dict[str, Any]:
+        """The panel's settings from its last state push (empty before the first)."""
         return self.state.get("settings", {})
 
+    # Every command below raises SlateConnectionError when the panel isn't
+    # connected, and the client's SlateError when the request fails.
     async def async_set_settings(self, **settings: Any) -> None:
+        """Change the given panel settings; the new values arrive in the next state push."""
         await self._require().request({"type": "set-config", "settings": settings})
 
     async def async_set_light(self, target: str, **state: Any) -> None:
+        """Change light ``target`` (``edge`` or ``display``): ``state``, ``brightness`` (0–1), colour, effect."""
         await self._require().request({"type": "light", "target": target, **state})
 
     async def async_command(self, msg_type: str, **data: Any) -> dict[str, Any]:
+        """Send a request of type ``msg_type`` with ``data`` and return the panel's reply."""
         return await self._require().request({"type": msg_type, **data})
 
     async def async_send(self, msg: dict[str, Any]) -> None:
+        """Send a message without waiting for a reply."""
         await self._require().send(msg)
 
     async def async_send_binary(self, channel: int, payload: bytes) -> None:
+        """Send a binary frame (audio or file data) on ``channel``."""
         await self._require().send_binary(channel, payload)
 
     async def async_sync_wake_words(self) -> dict[str, list[str]]:

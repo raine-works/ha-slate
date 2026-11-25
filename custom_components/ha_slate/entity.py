@@ -10,10 +10,16 @@ from .device import SlateDevice
 
 
 class SlateEntity(Entity):
+    """Base for every HA Slate entity: one panel's device info, availability and push updates."""
+
     _attr_has_entity_name = True
     _attr_should_poll = False
 
     def __init__(self, device: SlateDevice, key: str) -> None:
+        """Attach the entity to ``device``; its unique ID is ``<device_id>-<key>``.
+
+        The device ID doubles as a MAC connection when it's 12 lowercase hex digits.
+        """
         self.device = device
         self._attr_unique_id = f"{device.device_id}-{key}"
         mac = device.device_id
@@ -31,9 +37,11 @@ class SlateEntity(Entity):
 
     @property
     def available(self) -> bool:
+        """Available while the panel's Slate Link connection is up."""
         return self.device.connected
 
     async def async_added_to_hass(self) -> None:
+        """Write the entity's state whenever the device pushes an update, until removed."""
         await super().async_added_to_hass()
         self.async_on_remove(self.device.async_add_listener(self._handle_device_update))
 
